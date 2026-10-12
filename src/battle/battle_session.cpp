@@ -16,6 +16,7 @@
 #include "openlegend/diagnostics/log.hpp"
 #include "openlegend/input/legacy_key.hpp"
 #include "openlegend/model/checked_arithmetic.hpp"
+#include "openlegend/model/magic_progression.hpp"
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 
@@ -123,16 +124,6 @@ NODISCARD std::span<const std::uint8_t> terminated_name(
     const std::span<const std::uint8_t> name) noexcept {
     const auto end = std::find(name.begin(), name.end(), std::uint8_t{0U});
     return name.first(static_cast<std::size_t>(std::distance(name.begin(), end)));
-}
-
-NODISCARD int centered_magic_name_x(
-    const std::span<const std::uint8_t> name) noexcept {
-    for (std::size_t byte = 2U; byte <= name.size(); byte += 2U) {
-        if (byte == name.size() || name[byte] == 0U) {
-            return 65 - static_cast<int>(byte * 4U);
-        }
-    }
-    return 25;
 }
 
 NODISCARD std::u8string decimal_text(
@@ -621,9 +612,8 @@ bool BattleSession::render(
     } else if (player_menu_uses_key_states()) {
         rendered = render_player_action_menu(framebuffer);
     } else if (phase_ == BattleSessionPhase::ai_prelude_present) {
-        const auto status_panel = setup_.status_panel_plan(current_actor_slot_);
-        rendered = render_battlefield(framebuffer) && status_panel.has_value() &&
-            renderer_.render_status_panel(*status_panel, framebuffer);
+        // AI回合的状态框在现代UI层绘制（hud_view）。
+        rendered = render_battlefield(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_item_selection) {
         rendered = render_player_item_selection(framebuffer);
     } else if (phase_ == BattleSessionPhase::player_item_effect_present ||
@@ -697,10 +687,17 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
     }
     if (phase_ == BattleSessionPhase::player_action) {
         auto input_result = BattleSessionInputResult::ignored;
-        if (player_menu_down_state_) {
+        if (player_action_shortcut_pending_) {
+            player_action_shortcut_pending_ = false;
+            input_result = handle_player_action_key(kEnter);
+        } else if (player_menu_down_state_) {
             input_result = handle_player_action_key(kDown);
         } else if (player_menu_up_state_) {
             input_result = handle_player_action_key(kUp);
+        } else if (player_menu_left_state_) {
+            input_result = handle_player_action_key(kLeft);
+        } else if (player_menu_right_state_) {
+            input_result = handle_player_action_key(kRight);
         } else if (confirmation_state_) {
             input_result = handle_player_action_key(kEnter);
         }
@@ -717,7 +714,10 @@ void BattleSession::finish_presented_tick(const std::uint32_t bios_tick) {
             }
         }
         auto input_result = BattleSessionInputResult::ignored;
-        if (player_menu_down_state_) {
+        if (player_magic_shortcut_pending_) {
+            player_magic_shortcut_pending_ = false;
+            input_result = handle_player_magic_selection_key(kEnter);
+        } else if (player_menu_down_state_) {
             player_menu_down_state_ = false;
             clear_player_menu_direction_requested_ = kDown;
             input_result = handle_player_magic_selection_key(kDown);
@@ -3765,25 +3765,38 @@ BattleSessionInputResult BattleSession::handle_player_action_key(
         player_action_menu_.selected_action >= 0) {
         return BattleSessionInputResult::ignored;
     }
-    if (translated_key == kDown) {
-        player_menu_down_state_ = false;
-        clear_player_menu_direction_requested_ = kDown;
-        player_action_menu_.cursor =
-            player_action_menu_.cursor + 1U == player_action_menu_.available_count
-            ? 0U
-            : player_action_menu_.cursor + 1U;
-        diagnostics::log_debug(
-            "battle player action cursor id=" + std::to_string(battle_id()) +
-            " slot=" + std::to_string(current_actor_slot_) +
-            " cursor=" + std::to_string(player_action_menu_.cursor));
-        return BattleSessionInputResult::action_changed;
-    }
-    if (translated_key == kUp) {
-        player_menu_up_state_ = false;
-        clear_player_menu_direction_requested_ = kUp;
-        player_action_menu_.cursor = player_action_menu_.cursor == 0U
-            ? player_action_menu_.available_count - 1U
-            : player_action_menu_.cursor - 1U;
+    if (translated_key == kDown || translated_key == kUp ||
+        translated_key == kLeft || translated_key == kRight) {
+        // 行动面板按行排列：左右键只在本行内移动，越过行首行尾绕到本行另一端；
+        // 上下键在同一列换行，越过该列首末行时绕到另一端。
+        if (translated_key == kDown) {
+            player_menu_down_state_ = false;
+        } else if (translated_key == kUp) {
+            player_menu_up_state_ = false;
+        } else if (translated_key == kLeft) {
+            player_menu_left_state_ = false;
+        } else {
+            player_menu_right_state_ = false;
+        }
+        clear_player_menu_direction_requested_ = translated_key;
+        const auto count = player_action_menu_.available_count;
+        const auto cursor = player_action_menu_.cursor;
+        const auto column = cursor % kBattleActionMenuColumns;
+        const auto last_row = (count - 1U - column) / kBattleActionMenuColumns;
+        const auto row = cursor / kBattleActionMenuColumns;
+        const auto row_begin = row * kBattleActionMenuColumns;
+        const auto row_end = std::min(row_begin + kBattleActionMenuColumns, count) - 1U;
+        if (translated_key == kRight) {
+            player_action_menu_.cursor = cursor >= row_end ? row_begin : cursor + 1U;
+        } else if (translated_key == kLeft) {
+            player_action_menu_.cursor = cursor <= row_begin ? row_end : cursor - 1U;
+        } else if (translated_key == kDown) {
+            player_action_menu_.cursor =
+                (row >= last_row ? 0U : row + 1U) * kBattleActionMenuColumns + column;
+        } else {
+            player_action_menu_.cursor =
+                (row == 0U ? last_row : row - 1U) * kBattleActionMenuColumns + column;
+        }
         diagnostics::log_debug(
             "battle player action cursor id=" + std::to_string(battle_id()) +
             " slot=" + std::to_string(current_actor_slot_) +
@@ -4361,75 +4374,11 @@ bool BattleSession::render_player_magic_selection(
             static_cast<std::int16_t>(model::role_word::magic_count) ||
         player_magic_selection_->available_count <= 0 ||
         player_magic_selection_->cursor < 0 ||
-        player_magic_selection_->cursor >= player_magic_selection_->available_count ||
-        !render_battlefield(framebuffer)) {
+        player_magic_selection_->cursor >= player_magic_selection_->available_count) {
         return false;
     }
-    const auto& actor = setup_.combatants()[current_actor_slot_].words;
-    const auto role_id = actor[combatant_word::role_id];
-    if (role_id < 0 || static_cast<std::size_t>(role_id) >= ranger_.roles.size()) {
-        return false;
-    }
-    const auto* stored_role = setup_.combatant_role(current_actor_slot_);
-    if (stored_role == nullptr) {
-        return false;
-    }
-    const auto& role = *stored_role;
-    const auto draw_magic_name = [this, &framebuffer, &role](
-                                     const std::int16_t magic_slot,
-                                     const int y,
-                                     const render::TextColors colors) {
-        if (magic_slot < 0 ||
-            static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count) {
-            return false;
-        }
-        const auto magic_id = role.word(
-            model::role_word::magic_id_begin + static_cast<std::size_t>(magic_slot));
-        if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
-            return false;
-        }
-        const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
-        const auto name = std::span<const std::uint8_t>{magic.bytes}.subspan(
-            model::magic_word::name_byte, model::magic_word::name_bytes);
-        return renderer_.draw_text_big5(
-            framebuffer,
-            centered_magic_name_x(name),
-            y,
-            text::Big5TextView{terminated_name(name)},
-            colors);
-    };
-
-    const auto panel_height = static_cast<std::uint16_t>(
-        17 * player_magic_selection_->learned_count + 10);
-    if (!renderer_.draw_box(framebuffer, 20, 10, 90U, panel_height)) {
-        return false;
-    }
-    std::int16_t ordinal = 0;
-    for (std::int16_t magic_slot = 0;
-         magic_slot < player_magic_selection_->learned_count;
-         ++magic_slot) {
-        const auto available = std::find(
-            player_magic_selection_->available_slots.begin(),
-            player_magic_selection_->available_slots.begin() +
-                player_magic_selection_->available_count,
-            magic_slot);
-        if (available == player_magic_selection_->available_slots.begin() +
-                player_magic_selection_->available_count) {
-            continue;
-        }
-        if (!draw_magic_name(
-                magic_slot, 17 * ordinal + 15, text_colors::menu_normal)) {
-            return false;
-        }
-        ++ordinal;
-    }
-
-    const auto selected_slot = player_magic_selection_->available_slots[
-        static_cast<std::size_t>(player_magic_selection_->cursor)];
-    return draw_magic_name(
-        selected_slot,
-        17 * player_magic_selection_->cursor + 15,
-        text_colors::selected);
+    // 武功菜单在现代UI层绘制（hud_view），这里只保留战场画面。
+    return render_battlefield(framebuffer);
 }
 
 bool BattleSession::render_player_item_selection(
@@ -4469,51 +4418,17 @@ bool BattleSession::render_player_action_menu(
         player_action_menu_.cursor >= player_action_menu_.available_count) {
         return false;
     }
+    // 行动菜单与状态框在现代UI层绘制（hud_view），这里只保留战场画面。
     const bool full_redraw = phase_ != BattleSessionPhase::player_action;
     if (full_redraw) {
-        const auto panel_height = static_cast<std::uint16_t>(
-            17U * player_action_menu_.available_count + 10U);
-        if (!render_battlefield(framebuffer) ||
-            !renderer_.draw_box(framebuffer, 20, 19, 42U, panel_height)) {
+        if (!render_battlefield(framebuffer)) {
             return false;
         }
     } else if (!player_action_retain_callee_frame_) {
         if (!player_action_frame_) {
             return false;
         }
-        // Ordinary polling restores the last complete menu frame and only
-        // overwrites labels. A nonzero, non-one action result instead keeps the
-        // delegated callee's current frame, matching the skipped machine redraw.
         if (!framebuffer.copy_from(*player_action_frame_)) {
-            return false;
-        }
-    }
-    std::size_t ordinal = 0U;
-    for (std::size_t action = 0U; action < player_action_menu_.available.size(); ++action) {
-        if (player_action_menu_.available[action] != 1) {
-            continue;
-        }
-        if (!renderer_.draw_text_utf8(
-                framebuffer,
-                25,
-                24 + static_cast<int>(17U * ordinal),
-                kPlayerActionLabels[action],
-                text_colors::menu_normal)) {
-            return false;
-        }
-        ++ordinal;
-    }
-    const auto selected = action_for_ordinal(player_action_menu_.cursor);
-    if (!selected.has_value() || !renderer_.draw_text_utf8(
-            framebuffer, 25,
-            24 + static_cast<int>(17U * player_action_menu_.cursor),
-            kPlayerActionLabels[*selected], text_colors::selected)) {
-        return false;
-    }
-    if (full_redraw) {
-        const auto status_panel = setup_.status_panel_plan(current_actor_slot_);
-        if (!status_panel.has_value() ||
-            !renderer_.render_status_panel(*status_panel, framebuffer)) {
             return false;
         }
     }
@@ -4525,6 +4440,161 @@ bool BattleSession::render_player_action_menu(
         player_action_retain_callee_frame_ = false;
     }
     return true;
+}
+
+bool BattleSession::request_player_action_shortcut(const std::size_t index) noexcept {
+    if ((phase_ != BattleSessionPhase::player_action &&
+         phase_ != BattleSessionPhase::player_action_initial_present &&
+         phase_ != BattleSessionPhase::player_action_return_present) ||
+        index >= player_action_menu_.available_count || player_action_menu_.selected_action >= 0) {
+        return false;
+    }
+    player_action_menu_.cursor = index;
+    player_action_shortcut_pending_ = true;
+    player_menu_redraw_pending_ = true;
+    return true;
+}
+
+bool BattleSession::request_player_magic_shortcut(const std::size_t index) noexcept {
+    if (phase_ != BattleSessionPhase::player_magic_selection ||
+        !player_magic_selection_.has_value() ||
+        index >= static_cast<std::size_t>(std::max<std::int16_t>(
+            player_magic_selection_->available_count, 0))) {
+        return false;
+    }
+    player_magic_selection_->cursor = static_cast<std::int16_t>(index);
+    player_magic_shortcut_pending_ = true;
+    player_menu_redraw_pending_ = true;
+    return true;
+}
+
+BattleHudView BattleSession::hud_view() {
+    BattleHudView view;
+    if (!valid()) {
+        return view;
+    }
+    const auto count = static_cast<std::size_t>(
+        std::max<std::int64_t>(setup_.combatant_count(), 0));
+    for (std::size_t slot = 0U; slot < count; ++slot) {
+        const auto& words = setup_.combatants()[slot].words;
+        const auto* role = setup_.combatant_role(slot);
+        if (role == nullptr) {
+            continue;
+        }
+        BattleHudCombatant combatant{
+            .slot = slot,
+            .side = words[combatant_word::side],
+            .hidden = words[combatant_word::occupancy_hidden] != 0,
+            .portrait_id = role->head_id,
+            .name = role->legacy_name(),
+            .level = role->level,
+            .hp = role->hp,
+            .maximum_hp = role->maximum_hp,
+            .mp = role->mp,
+            .maximum_mp = role->maximum_mp,
+            .physical_power = role->physical_power,
+            .poison = role->poison,
+            .hurt = role->hurt,
+            .mp_type = role->mp_type,
+        };
+        if (combatant.side == 0) {
+            for (std::size_t member = 0U; member < model::kTeamMemberCount; ++member) {
+                if (ranger_.header.team_member(member).value == words[combatant_word::role_id]) {
+                    combatant.team_index = static_cast<int>(member);
+                    break;
+                }
+            }
+        }
+        if (slot == current_actor_slot_) {
+            view.current = view.combatants.size();
+        }
+        view.combatants.push_back(combatant);
+    }
+
+    switch (phase_) {
+    case BattleSessionPhase::party_selection:
+    case BattleSessionPhase::initial_fade_to_black:
+    case BattleSessionPhase::initial_present:
+    case BattleSessionPhase::initial_fade:
+    case BattleSessionPhase::player_item_selection:
+    case BattleSessionPhase::player_status_selection:
+    case BattleSessionPhase::player_status_page_present:
+    case BattleSessionPhase::player_status_page_wait:
+    case BattleSessionPhase::battle_outcome:
+    case BattleSessionPhase::battle_outcome_wait:
+    case BattleSessionPhase::post_battle_message_present:
+    case BattleSessionPhase::post_battle_message_wait:
+    case BattleSessionPhase::complete:
+        return view;
+    default:
+        break;
+    }
+    if (outcome_ != BattleOutcome::ongoing) {
+        return view;
+    }
+    view.battlefield = true;
+
+    if (phase_ == BattleSessionPhase::player_magic_selection) {
+        const auto* role = setup_.combatant_role(current_actor_slot_);
+        if (!player_magic_selection_.has_value() || role == nullptr) {
+            return view;
+        }
+        for (std::int16_t index = 0; index < player_magic_selection_->available_count; ++index) {
+            const auto magic_slot =
+                player_magic_selection_->available_slots[static_cast<std::size_t>(index)];
+            if (magic_slot < 0 ||
+                static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count) {
+                break;
+            }
+            const auto magic_id = role->magic_ids[static_cast<std::size_t>(magic_slot)].value;
+            if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
+                break;
+            }
+            const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
+            BattleHudMagic entry;
+            entry.name = terminated_name(std::span<const std::uint8_t>{magic.bytes}
+                .subspan(model::magic_word::name_byte, model::magic_word::name_bytes));
+            // 显示本次实际可施展的等级：内力不足时按原版规则降级。
+            const auto base_cost = magic.word(model::magic_word::need_mp);
+            const auto learned = model::magic_level_from_proficiency(
+                role->magic_levels[static_cast<std::size_t>(magic_slot)]);
+            const auto level = learned.has_value()
+                ? model::affordable_magic_level(*learned, role->mp, base_cost) : std::nullopt;
+            entry.level = level.value_or(learned.value_or(1));
+            if (const auto effects = setup_.magic_effects(
+                    static_cast<std::size_t>(magic_id), entry.level)) {
+                entry.power = effects->attack;
+            }
+            entry.mp_cost = model::magic_mp_cost(entry.level, base_cost);
+            view.magics.push_back(entry);
+        }
+        view.magic_cursor = static_cast<std::size_t>(std::max<std::int16_t>(
+            player_magic_selection_->cursor, 0));
+    } else if (phase_ == BattleSessionPhase::player_action_initial_present ||
+               phase_ == BattleSessionPhase::player_action_return_present ||
+               phase_ == BattleSessionPhase::player_action) {
+        for (std::size_t action = 0U; action < player_action_menu_.available.size(); ++action) {
+            if (player_action_menu_.available[action] == 1) {
+                view.action_labels.push_back(kPlayerActionLabels[action]);
+            }
+        }
+        view.action_cursor = player_action_menu_.cursor;
+    }
+
+    if ((phase_ == BattleSessionPhase::player_movement_select ||
+         phase_ == BattleSessionPhase::player_targeting_select) &&
+        player_cursor_selection_.has_value()) {
+        const auto cursor = player_cursor_selection_->cursor;
+        for (std::size_t index = 0U; index < view.combatants.size(); ++index) {
+            const auto& words = setup_.combatants()[view.combatants[index].slot].words;
+            if (!view.combatants[index].hidden && words[combatant_word::x] == cursor.x &&
+                words[combatant_word::y] == cursor.y) {
+                view.inspected = index;
+                break;
+            }
+        }
+    }
+    return view;
 }
 
 bool BattleSession::render_battle_outcome(

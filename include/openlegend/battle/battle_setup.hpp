@@ -803,6 +803,10 @@ public:
     NODISCARD std::optional<BattleStatusPanelPlan> status_panel_plan(
         std::size_t combatant_slot) const;
 
+    // 武功在指定等级的效果；10级以上按NG+成长模型推算。
+    NODISCARD std::optional<model::MagicEffects> magic_effects(
+        std::size_t magic_id, std::int64_t level);
+
     NODISCARD std::optional<BattlePathCoord> move_one_marked_step(
         BattlePathing& pathing, std::size_t slot);
 
@@ -1249,9 +1253,6 @@ private:
         BattleAiItemPlan& plan) const;
 
     void remove_inventory_slot(std::size_t slot) noexcept;
-
-    NODISCARD std::optional<model::MagicEffects> magic_effects(
-        std::size_t magic_id, std::int64_t level);
 
     BattleData& data_;
     model::RuntimeRangerState& ranger_;

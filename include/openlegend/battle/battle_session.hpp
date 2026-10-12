@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "openlegend/attributes.hpp"
@@ -157,6 +159,50 @@ inline constexpr std::size_t kBattleItemTabCount = 3U;
 // 战斗物品页签对应的物品分类：全部、藥品、暗器。
 inline constexpr std::array<std::uint8_t, kBattleItemTabCount> kBattleItemTabs{0U, 1U, 5U};
 
+// 现代UI层战斗界面所需的数据：参战者状态、行动顺序、菜单、光标所指角色与伤害数字。
+// 行动面板按行排列，每行项数；左右键在本行内移动，上下键在同一列换行。
+inline constexpr std::size_t kBattleActionMenuColumns = 3U;
+
+struct BattleHudCombatant {
+    std::size_t slot{};
+    std::int16_t side{};
+    bool hidden{};
+    // 我方在队伍中的位置，用于固定信息条卡片顺序；敌方为-1。
+    int team_index{-1};
+    std::int16_t portrait_id{};
+    std::array<std::uint8_t, model::role_word::name_bytes> name{};
+    std::int64_t level{};
+    std::int64_t hp{};
+    std::int64_t maximum_hp{};
+    std::int64_t mp{};
+    std::int64_t maximum_mp{};
+    std::int64_t physical_power{};
+    std::int64_t poison{};
+    std::int64_t hurt{};
+    std::int64_t mp_type{};
+};
+
+struct BattleHudMagic {
+    std::span<const std::uint8_t> name;
+    std::int64_t level{};
+    std::optional<std::int64_t> power;
+    std::optional<std::int64_t> mp_cost;
+};
+
+struct BattleHudView {
+    // 正在显示战场（信息条与行动顺序只在战场画面上显示）。
+    bool battlefield{};
+    // 全部参战者，按本回合行动顺序（排序后的槽位）。
+    std::vector<BattleHudCombatant> combatants;
+    std::optional<std::size_t> current;
+    std::vector<std::u8string_view> action_labels;
+    std::size_t action_cursor{};
+    std::vector<BattleHudMagic> magics;
+    std::size_t magic_cursor{};
+    // 移动或选目标时光标所在格的参战者。
+    std::optional<std::size_t> inspected;
+};
+
 class BattleSession {
 public:
     BattleSession(
@@ -236,9 +282,12 @@ public:
         }
     }
 
-    void set_player_menu_direction_states(bool down, bool up) noexcept {
+    void set_player_menu_direction_states(
+        bool down, bool up, bool left = false, bool right = false) noexcept {
         player_menu_down_state_ = down;
         player_menu_up_state_ = up;
+        player_menu_left_state_ = left;
+        player_menu_right_state_ = right;
     }
 
     void set_cursor_selection_input_states(
@@ -326,6 +375,22 @@ public:
     NODISCARD std::size_t player_status_party_count() const noexcept;
 
     NODISCARD bool player_status_page_active() const noexcept;
+
+    NODISCARD BattleHudView hud_view();
+
+    // 行动面板数字快捷键：选中第index项并在下一次呈现后执行，与移到该项再确认相同。
+    bool request_player_action_shortcut(std::size_t index) noexcept;
+
+    // 行动面板或武功列表正在等待选择，数字快捷键可用。
+    NODISCARD bool shortcut_menu_active() const noexcept {
+        return phase_ == BattleSessionPhase::player_action_initial_present ||
+            phase_ == BattleSessionPhase::player_action_return_present ||
+            phase_ == BattleSessionPhase::player_action ||
+            phase_ == BattleSessionPhase::player_magic_selection;
+    }
+
+    // 武功列表数字快捷键：选中第index门武功并在下一次呈现后确认。
+    bool request_player_magic_shortcut(std::size_t index) noexcept;
 
     NODISCARD std::vector<const model::RoleState*> player_status_role_states() const;
 
@@ -676,6 +741,10 @@ private:
     bool clear_confirmation_states_requested_{};
     bool player_menu_down_state_{};
     bool player_menu_up_state_{};
+    bool player_menu_left_state_{};
+    bool player_action_shortcut_pending_{};
+    bool player_magic_shortcut_pending_{};
+    bool player_menu_right_state_{};
     std::uint8_t clear_player_menu_direction_requested_{};
     bool cursor_down_state_{};
     bool cursor_right_state_{};

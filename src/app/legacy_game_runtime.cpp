@@ -25,6 +25,7 @@
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
 #include "character_status_page.hpp"
+#include "battle_hud.hpp"
 #include "item_list_page.hpp"
 #include "world_minimap.hpp"
 
@@ -1062,9 +1063,9 @@ void LegacyGameRuntime::set_battle_confirmation_state(const bool active) noexcep
 }
 
 void LegacyGameRuntime::set_battle_menu_direction_states(
-    const bool down, const bool up) noexcept {
+    const bool down, const bool up, const bool left, const bool right) noexcept {
     if (view_ == LegacyGameView::battle && battle_session_ != nullptr) {
-        battle_session_->set_player_menu_direction_states(down, up);
+        battle_session_->set_player_menu_direction_states(down, up, left, right);
     }
 }
 
@@ -1084,6 +1085,19 @@ bool LegacyGameRuntime::battle_menu_uses_key_states() const noexcept {
     return view_ == LegacyGameView::battle && battle_session_ != nullptr &&
         (battle_session_->player_menu_uses_key_states() ||
          battle_session_->cursor_selection_uses_key_states());
+}
+
+bool LegacyGameRuntime::handle_battle_action_shortcut(const std::uint8_t translated_key) noexcept {
+    if (view_ != LegacyGameView::battle || battle_session_ == nullptr ||
+        translated_key < static_cast<std::uint8_t>('0') ||
+        translated_key > static_cast<std::uint8_t>('9')) {
+        return false;
+    }
+    const auto index = translated_key == static_cast<std::uint8_t>('0')
+        ? std::size_t{9U}
+        : static_cast<std::size_t>(translated_key - static_cast<std::uint8_t>('1'));
+    return battle_session_->request_player_magic_shortcut(index) ||
+        battle_session_->request_player_action_shortcut(index);
 }
 
 bool LegacyGameRuntime::death_menu_accepts_input() const noexcept {
@@ -2557,6 +2571,21 @@ bool LegacyGameRuntime::render_modern_ui_view(
         }
         if (battle_session_ != nullptr && battle_session_->player_item_selection_active()) {
             return render_battle_item_list_view(framebuffer);
+        }
+        if (battle_session_ != nullptr) {
+            const auto hud = battle_session_->hud_view();
+            if (!hud.battlefield) {
+                return true;
+            }
+            if (game_menu_status_renderer_ == nullptr) {
+                game_menu_status_renderer_ = std::make_unique<battle::BattleRenderer>(data_root_, 0);
+            }
+            if (!game_menu_status_renderer_->valid() ||
+                !render_battle_hud(*game_menu_status_renderer_, modern_ui_renderer_,
+                    framebuffer_.palette(), hud, framebuffer)) {
+                // 战斗界面绘制失败只记录错误，不让渲染链退出游戏。
+                diagnostics::log_error("battle hud render failed");
+            }
         }
         return true;
     case LegacyGameView::name_entry:

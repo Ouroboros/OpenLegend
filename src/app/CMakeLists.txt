@@ -1,6 +1,7 @@
 add_library(
     openlegend_app
     STATIC
+        battle_hud.cpp
         character_status_page.cpp
         display_resolution.cpp
         item_list_page.cpp

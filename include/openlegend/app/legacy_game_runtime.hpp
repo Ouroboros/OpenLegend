@@ -260,12 +260,21 @@ public:
 
     void set_battle_confirmation_state(bool active) noexcept;
 
-    void set_battle_menu_direction_states(bool down, bool up) noexcept;
+    void set_battle_menu_direction_states(
+        bool down, bool up, bool left = false, bool right = false) noexcept;
 
     void set_battle_cursor_input_states(
         bool down, bool right, bool left, bool up, bool escape) noexcept;
 
     NODISCARD bool battle_menu_uses_key_states() const noexcept;
+
+    // 战斗行动面板与武功列表数字快捷键：1～9对应第1～9项，0对应第10项；已处理时返回true。
+    bool handle_battle_action_shortcut(std::uint8_t translated_key) noexcept;
+
+    NODISCARD bool battle_shortcut_menu_active() const noexcept {
+        return view_ == LegacyGameView::battle && battle_session_ != nullptr &&
+            battle_session_->shortcut_menu_active();
+    }
 
     NODISCARD bool death_menu_accepts_input() const noexcept;
 

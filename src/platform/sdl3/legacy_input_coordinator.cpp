@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -12,6 +13,25 @@
 #include "sdl_runtime_platform.hpp"
 
 namespace openlegend::platform::sdl3 {
+namespace {
+
+NODISCARD std::optional<std::uint8_t> keypad_digit(const compat::HostKey key) noexcept {
+    switch (key) {
+    case compat::HostKey::keypad_0: return static_cast<std::uint8_t>('0');
+    case compat::HostKey::keypad_1: return static_cast<std::uint8_t>('1');
+    case compat::HostKey::keypad_2: return static_cast<std::uint8_t>('2');
+    case compat::HostKey::keypad_3: return static_cast<std::uint8_t>('3');
+    case compat::HostKey::keypad_4: return static_cast<std::uint8_t>('4');
+    case compat::HostKey::keypad_5: return static_cast<std::uint8_t>('5');
+    case compat::HostKey::keypad_6: return static_cast<std::uint8_t>('6');
+    case compat::HostKey::keypad_7: return static_cast<std::uint8_t>('7');
+    case compat::HostKey::keypad_8: return static_cast<std::uint8_t>('8');
+    case compat::HostKey::keypad_9: return static_cast<std::uint8_t>('9');
+    default: return std::nullopt;
+    }
+}
+
+}  // namespace
 
 LegacyInputCoordinator::LegacyInputCoordinator(app::LegacyGameRuntime& game)
     : game_(game) {}
@@ -184,7 +204,9 @@ void LegacyInputCoordinator::sync_battle_confirmation() {
         keyboard_.down(input::legacy_key::keypad_insert));
     game_.set_battle_menu_direction_states(
         keyboard_.down(input::legacy_key::down),
-        keyboard_.down(input::legacy_key::up));
+        keyboard_.down(input::legacy_key::up),
+        keyboard_.down(input::legacy_key::left),
+        keyboard_.down(input::legacy_key::right));
     game_.set_battle_cursor_input_states(
         any_down(input::legacy_key::world_down),
         any_down(input::legacy_key::world_right),
@@ -256,6 +278,14 @@ void LegacyInputCoordinator::dispatch_key_down(
          key == compat::HostKey::keypad_minus || key == compat::HostKey::keypad_plus)) {
         keyboard_.handle_host_key(key, false);
     }
+    // 战斗行动面板与武功列表中，小键盘0～9按数字快捷键处理，不当作方向键。
+    if (const auto digit = keypad_digit(key);
+        digit.has_value() && game_.battle_shortcut_menu_active()) {
+        if (!repeat) {
+            static_cast<void>(game_.handle_battle_action_shortcut(*digit));
+        }
+        return;
+    }
     keyboard_.handle_host_key(key, true);
     sync_battle_confirmation();
     const auto translated_key = keyboard_.last_key();
@@ -270,6 +300,11 @@ void LegacyInputCoordinator::dispatch_key_down(
         if (!repeat) {
             game_.toggle_world_minimap();
         }
+        return;
+    }
+
+    if (!repeat && game_.handle_battle_action_shortcut(translated_key)) {
+        keyboard_.clear_last_key();
         return;
     }
 
