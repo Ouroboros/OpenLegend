@@ -87,6 +87,7 @@ build.bat app --data-dir "..\data"
 | `--jobs N` | 编译并发数；默认逻辑 CPU 数，可由 `OPENLEGEND_BUILD_JOBS` 设置。 |
 | `--test-jobs N` | 使用 `--tests` 时的测试并发数；默认逻辑 CPU 数，可由 `OPENLEGEND_TEST_JOBS` 设置。 |
 | `--configure-only` | 只生成或刷新配置，不编译、不测试。 |
+| `--clean` | 编译前清除该配置的全部编译产物（含第三方库的编译结果），再从头编译；保留已下载的依赖源码与 CMake 配置。不能与 `--configure-only` 同用。 |
 | `--tests` | 编译后运行 CTest，并在 BUILD 前验证原版数据目录。 |
 | `--test-regex PATTERN` | 仅运行名称匹配该正则的 CTest；须同时传入 `--tests`，不匹配任何测试时报错。 |
 | `--skip-tests` | 明确跳过 CTest 和 BUILD 前的数据目录身份检查；这是默认行为。 |
@@ -175,6 +176,16 @@ Windows ASan 应用还必须把同批 BUILD 生成的 `clang_rt.asan_dynamic-x86
 `openlegend.toml` 应放在部署后的可执行文件同目录。相对的 `data_dir`、`save_dir` 和日志路径均从该目录解析。
 
 部署完成不代表已经启动；除非明确要求，不应自动运行游戏。
+
+## 发布包
+
+Windows 发布包由根目录 `release.bat` 生成：
+
+```bat
+release.bat v0.1.0
+```
+
+脚本经 `build.bat app --config Release --clean` 清除全部编译产物后从头编译（保留已下载的依赖源码），再把 `openlegend.exe`、`config\openlegend.example.toml`（改名为 `openlegend.toml`）和 `config\battle_merges.toml` 打成 `dist\OpenLegend-<版本>-windows-x64.zip`，同时生成 `.zip.sha256`。省略版本时取 `git describe --tags --always --dirty`。原版数据目录取 `OPENLEGEND_GAME_DATA_ROOT`，未设置时为仓库旁的 `..\data`。发布包不含原版数据，也不含 ASan 运行库；普通 Release 使用静态 CRT 与静态依赖，不需要附带 DLL。
 
 ## 常见问题
 

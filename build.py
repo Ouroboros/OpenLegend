@@ -123,6 +123,12 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
         default=environment_jobs("OPENLEGEND_TEST_JOBS", processor_count),
     )
     parser.add_argument("--configure-only", action="store_true")
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="remove all build outputs of the configuration before building; "
+        "downloaded dependency sources are kept",
+    )
     test_mode = parser.add_mutually_exclusive_group()
     test_mode.add_argument(
         "--tests",
@@ -146,6 +152,8 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     result = parser.parse_args(arguments)
     if result.test_regex is not None and (result.skip_tests or result.configure_only):
         parser.error("--test-regex requires --tests and cannot be used with --configure-only")
+    if result.clean and result.configure_only:
+        parser.error("--clean cannot be used with --configure-only")
     if result.test_regex is not None and not result.test_regex:
         parser.error("--test-regex must not be empty")
     if result.config is None:
@@ -559,7 +567,7 @@ def main() -> int:
 
     print(
         f"[OpenLegend] Build: {build_label}-{args.config.lower()} "
-        f"(parallel jobs: {args.jobs})",
+        f"(parallel jobs: {args.jobs}{', clean first' if args.clean else ''})",
         flush=True,
     )
     run(
@@ -571,6 +579,7 @@ def main() -> int:
             args.config,
             "--parallel",
             str(args.jobs),
+            *(["--clean-first"] if args.clean else []),
         ],
         process_cwd,
     )
