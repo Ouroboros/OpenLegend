@@ -28,6 +28,7 @@ static_assert(kItemEffectLabels.size() ==
     model::item_word::add_attack_with_poison - model::item_word::add_hp + 1U);
 constexpr std::size_t kChangeMpTypeEffectIndex =
     model::item_word::change_mp_type - model::item_word::add_hp;
+constexpr std::size_t kAddMpEffectIndex = model::item_word::add_mp - model::item_word::add_hp;
 
 struct Requirement {
     std::size_t item_word;
@@ -135,7 +136,8 @@ NODISCARD bool draw_detail_column(
 NODISCARD bool draw_detail(
     const battle::BattleRenderer& data, PageLayout& layout, const ContentArea& area,
     const model::RuntimeRangerState& ranger, const std::size_t inventory_slot,
-    const std::u8string_view coordinate_text, const int row_step) {
+    const std::u8string_view coordinate_text, const std::int64_t hp_percent_base,
+    const std::int64_t mp_percent_base, const int row_step) {
     const auto item_id = ranger.header.inventory_item(inventory_slot).value;
     if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size()) {
         return true;
@@ -207,6 +209,16 @@ NODISCARD bool draw_detail(
                 effects.push_back({std::u8string{kItemEffectLabels[index]},
                     std::u8string{kMpTypeLabels[2U]}, {}});
             }
+            continue;
+        }
+        const auto percent_base = index == 0U ? hp_percent_base
+            : index == kAddMpEffectIndex ? mp_percent_base : 0;
+        if (value > 0 && percent_base > 0) {
+            // 药品回血、回内力按目标最大值比例生效，超出缺口不再增加，最多显示100%。
+            const auto percent = std::min<std::int64_t>(
+                (value * 100 + percent_base / 2) / percent_base, 100);
+            effects.push_back({std::u8string{kItemEffectLabels[index]},
+                signed_text(percent) + std::u8string{kPercentSuffix}, {}});
             continue;
         }
         if (value != 0) {
@@ -392,7 +404,8 @@ bool render_item_list_page(
         ContentArea{detail_left + padding, panel_right - 2 * padding,
             content_top + padding, content_bottom - padding},
         ranger, static_cast<std::size_t>(view.inventory_slots[view.cursor]),
-        view.coordinate_text, list_line + layout.length(2));
+        view.coordinate_text, view.hp_percent_base, view.mp_percent_base,
+        list_line + layout.length(2));
 }
 
 }  // namespace openlegend::app

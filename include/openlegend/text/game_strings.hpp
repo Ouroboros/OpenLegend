@@ -215,6 +215,7 @@ inline constexpr std::u8string_view protagonist_location_label = u8"人";
 inline constexpr std::u8string_view ship_location_label = u8"船";
 inline constexpr std::u8string_view use_item_prefix = u8"使用 ";
 inline constexpr std::u8string_view item_increase = u8"提升";
+inline constexpr std::u8string_view percent_suffix = u8"%";
 inline constexpr std::u8string_view item_decrease = u8"減少";
 inline constexpr std::u8string_view item_mp_type_changed = u8"內力門路改為  陰陽合一";
 inline constexpr std::array<std::u8string_view, 23> item_effect_labels{
@@ -317,6 +318,7 @@ inline constexpr std::u8string_view role_hp_notice_infix = u8" 生命增加 ";
 inline constexpr std::u8string_view morality_notice_prefix = u8"你現在的品德指數為";
 inline constexpr std::u8string_view fame_notice_prefix = u8"你現在個人聲望指數為";
 
+inline constexpr auto kPercentSuffix = percent_suffix;
 inline constexpr auto kUnknown = unknown;
 inline constexpr auto kPersonOpen = person_open;
 inline constexpr auto kComma = comma;

@@ -398,7 +398,8 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
     const std::int64_t original_maximum_hp,
-    const bool new_game_plus_enabled) {
+    const bool new_game_plus_enabled,
+    const std::int64_t original_maximum_mp) {
     if (actor_role_id < 0 || target_role_id < 0 || item_id < 0 ||
         static_cast<std::size_t>(actor_role_id) >= ranger.roles.size() ||
         static_cast<std::size_t>(target_role_id) >= ranger.roles.size() ||
@@ -409,7 +410,7 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
         ranger.roles[static_cast<std::size_t>(actor_role_id)],
         ranger.roles[static_cast<std::size_t>(target_role_id)],
         ranger.items[static_cast<std::size_t>(item_id)], random, limits, original_maximum_hp,
-        new_game_plus_enabled);
+        new_game_plus_enabled, original_maximum_mp);
 }
 
 std::optional<BattleItemEffectResult> apply_role_item_effect(
@@ -419,7 +420,8 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
     const std::int64_t original_maximum_hp,
-    const bool new_game_plus_enabled) {
+    const bool new_game_plus_enabled,
+    const std::int64_t original_maximum_mp) {
     if (original_maximum_hp <= 0 || limits.hurt_maximum < 0 || limits.hurt_ratio_denominator < 0) {
         return std::nullopt;
     }
@@ -569,7 +571,15 @@ std::optional<BattleItemEffectResult> apply_role_item_effect(
         result.deltas[4U] = 2;
     }
 
-    const std::int64_t add_mp = item.word(model::item_word::add_mp);
+    std::int64_t add_mp = item.word(model::item_word::add_mp);
+    // 正向回内力与回血同理按目标最大内力比例放大；负值仍按原数值扣减。
+    if (add_mp > 0 && original_maximum_mp > 0) {
+        const auto scaled = model::checked_multiply(add_mp, target.maximum_mp);
+        if (!scaled.has_value()) {
+            return std::nullopt;
+        }
+        add_mp = *scaled / original_maximum_mp;
+    }
     if (add_mp != 0) {
         const auto changed = model::checked_add(target.mp, add_mp);
         if (!changed.has_value()) {
@@ -3327,7 +3337,7 @@ std::optional<BattleItemEffectResult> BattleSetup::apply_ai_item_effect(
     const auto previous_random = random;
     auto result = openlegend::battle::apply_role_item_effect(
         *actor, *target, ranger_.items[static_cast<std::size_t>(*item_id)], random, limits_,
-        data_.original_maximum_hp(), new_game_plus_enabled_);
+        data_.original_maximum_hp(), new_game_plus_enabled_, data_.original_maximum_mp());
     if (!result.has_value()) {
         error_ = "battle item effect is invalid or overflows";
         return std::nullopt;

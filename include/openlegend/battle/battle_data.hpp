@@ -24,6 +24,8 @@ struct ProgressionData {
     std::array<std::uint16_t, kOriginalLevelCount> thresholds{};
     model::PracticeRules practice_rules{};
     std::int64_t original_maximum_hp{};
+    // 原版物品效果中最大内力的上限（与最大生命同为999），药品回内力的倍率基准。
+    std::int64_t original_maximum_mp{};
     std::string error;
 };
 
@@ -54,6 +56,8 @@ public:
 
     NODISCARD std::int64_t original_maximum_hp() const noexcept { return original_maximum_hp_; }
 
+    NODISCARD std::int64_t original_maximum_mp() const noexcept { return original_maximum_mp_; }
+
     NODISCARD std::span<const std::int16_t, kBattleDefinitionWords> definition() const noexcept {
         return definition_;
     }
@@ -76,6 +80,7 @@ private:
     std::array<std::uint16_t, kOriginalLevelCount> experience_thresholds_{};
     model::PracticeRules practice_rules_{};
     std::int64_t original_maximum_hp_{};
+    std::int64_t original_maximum_mp_{};
     std::array<std::int16_t, kBattleDefinitionWords> definition_{};
     std::array<std::int16_t, kBattlefieldWords> battlefield_{};
     std::array<std::int16_t, kBattleOccupancyCells> occupancy_{};

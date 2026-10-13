@@ -24,6 +24,10 @@ struct ItemListPageView {
     std::size_t active_tab{};
     // 坐标物品的说明栏替换文字，多行以换行符分隔。
     std::u8string_view coordinate_text;
+    // 药品正向回血／回内力的倍率基准（原版最大生命、最大内力上限）：回复量按目标最大值的
+    // 加成 / 基准 计算，正的生命值、内力值加成显示为百分比；不大于0时按原数值显示。
+    std::int64_t hp_percent_base{};
+    std::int64_t mp_percent_base{};
 };
 
 NODISCARD bool render_item_list_page(

@@ -432,6 +432,7 @@ LegacyStartupResources::LegacyStartupResources(const resource::DataRoot& data_ro
         return;
     }
     original_maximum_hp_ = progression.original_maximum_hp;
+    original_maximum_mp_ = progression.original_maximum_mp;
 
     ranger_ = persistence::load_baseline_ranger(data_root.path());
     if (!ranger_) {
@@ -3899,7 +3900,9 @@ bool LegacyGameRuntime::render_item_page_overlay(
                 visible_rows,
                 tabs,
                 active_tab,
-                coordinate_text},
+                coordinate_text,
+                startup_resources_.original_maximum_hp(),
+                startup_resources_.original_maximum_mp()},
             framebuffer)) {
         // 物品页绘制失败只记录错误，不让渲染链退出游戏。
         diagnostics::log_error("item list page render failed cursor=" + std::to_string(cursor));
@@ -4362,7 +4365,8 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
         }
         auto effect = battle::apply_role_item_effect(
             *ranger, role_id, role_id, item_id, random_, *limits,
-            startup_resources_.original_maximum_hp(), snapshot->configuration.enabled);
+            startup_resources_.original_maximum_hp(), snapshot->configuration.enabled,
+            startup_resources_.original_maximum_mp());
         if (!effect.has_value()) {
             clear_pending();
             game_menu_.show_main();

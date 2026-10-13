@@ -52,6 +52,20 @@ ProgressionData load_progression_data(const resource::DataRoot& data_root) {
         result.error = "Z.DAT original maximum HP is not positive";
         return result;
     }
+    // 同一物品效果函数中最大内力的上限比较与写回（角色最大内力字段0x701A0）。
+    if (bytes[0x253B7U] != 0x66U || bytes[0x253B8U] != 0x81U ||
+        bytes[0x253B9U] != 0xB8U || compat::read_u32le(bytes, 0x253BAU) != 0x701A0U ||
+        bytes[0x253C2U] != 0x66U || bytes[0x253C3U] != 0xC7U ||
+        bytes[0x253C4U] != 0x80U || compat::read_u32le(bytes, 0x253C5U) != 0x701A0U ||
+        compat::read_i16le(bytes, 0x253BEU) != compat::read_i16le(bytes, 0x253C9U)) {
+        result.error = "Z.DAT maximum MP rule instruction layout is invalid";
+        return result;
+    }
+    result.original_maximum_mp = compat::read_i16le(bytes, 0x253BEU);
+    if (result.original_maximum_mp <= 0) {
+        result.error = "Z.DAT original maximum MP is not positive";
+        return result;
+    }
     if (bytes[0x35521U] != 0xBBU || bytes[0x35531U] != 0xBAU ||
         bytes[0x35556U] != 0xBBU || bytes[0x35566U] != 0xBAU ||
         bytes[0x3553BU] != 0x8DU || bytes[0x3553CU] != 0x56U ||
@@ -132,6 +146,7 @@ BattleData::BattleData(
     experience_thresholds_ = experience_data.thresholds;
     practice_rules_ = experience_data.practice_rules;
     original_maximum_hp_ = experience_data.original_maximum_hp;
+    original_maximum_mp_ = experience_data.original_maximum_mp;
     occupancy_.fill(-1);
     // 并入失败（敌方槽位不足或找不到站位）时还原为原版战斗。
     if (merged_battle_id >= 0) {

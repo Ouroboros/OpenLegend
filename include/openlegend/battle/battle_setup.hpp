@@ -149,6 +149,8 @@ NODISCARD bool consume_inventory_item_slot(
     model::RuntimeRangerState& ranger,
     std::size_t inventory_slot) noexcept;
 
+// 正的生命／内力回复按目标最大值比例放大：理论回复 × 目标最大值 / 原版上限（均为999），
+// 最多补满；original_maximum_mp不大于0时内力按原版固定数值回复。
 NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     model::RuntimeRangerState& ranger,
     std::int16_t actor_role_id,
@@ -157,7 +159,8 @@ NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
     std::int64_t original_maximum_hp,
-    bool new_game_plus_enabled);
+    bool new_game_plus_enabled,
+    std::int64_t original_maximum_mp = 0);
 
 NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     const model::RoleState& actor,
@@ -166,7 +169,8 @@ NODISCARD std::optional<BattleItemEffectResult> apply_role_item_effect(
     random::LegacyRandom& random,
     const model::PlaythroughLimits& limits,
     std::int64_t original_maximum_hp,
-    bool new_game_plus_enabled);
+    bool new_game_plus_enabled,
+    std::int64_t original_maximum_mp = 0);
 
 struct BattleRestResult {
     std::int64_t physical_power{};
