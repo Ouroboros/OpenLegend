@@ -50,16 +50,7 @@ if errorlevel 1 (
     echo [OpenLegend] Packing failed.
     exit /b 1
 )
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$ErrorActionPreference='Stop';" ^
-    "$hash=(Get-FileHash -Algorithm SHA256 '%ZIP%').Hash.ToLower();" ^
-    "Set-Content -Encoding ascii -Path '%ZIP%.sha256' -Value ($hash + '  %PACKAGE%.zip')"
-if errorlevel 1 (
-    echo [OpenLegend] Checksum failed.
-    exit /b 1
-)
 rmdir /s /q "%STAGE%"
 
 echo [OpenLegend] Package: %ZIP%
-type "%ZIP%.sha256"
 exit /b 0
