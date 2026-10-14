@@ -36,7 +36,6 @@ PlaythroughTransitionResult prepare_next_playthrough(
             inherited.sex = destination.sex;
             inherited.frames = destination.frames;
             inherited.morality = destination.morality;
-            inherited.attack_twice = destination.attack_twice;
             inherited.fame = destination.fame;
             inherited.taking_items = destination.taking_items;
             inherited.taking_counts = destination.taking_counts;

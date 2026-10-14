@@ -26,7 +26,7 @@
 |---|---|---|
 | [add_hp](fields/add-hp.zh-Hans.html) | 静态物品值来自资产；回血按正式分母及实际最大HP计算 | B；普通物品、菜单与AI效果及溢出回滚 |
 | [add_poison](fields/add-poison.zh-Hans.html) | 静态物品值来自资产；正毒统一上毒，负毒按药效 | B；玩家、AI、暗器、普通物品与独立溢出伤血 |
-| [attack_twice](fields/attack-twice.zh-Hans.html) | 下一周目恢复BASE；本周固定域0～1 | R／T／P；恢复、非法域拒绝、双击费用时机 |
+| [attack_twice](fields/attack-twice.zh-Hans.html) | 曾入队角色下一周目继承实际值；本周固定域0～1 | R／T／P；继承、非法域拒绝、双击费用时机 |
 | [attack_with_poison](fields/attack-with-poison.zh-Hans.html) | 曾入队实际值继承；附毒读取实际值 | R／T／B／P；上毒、秘笈增量与溢出 |
 | [attack](fields/attack.zh-Hans.html) | 实际值继承；装备生效值单独计算 | R／T／B／P；宽攻击、剧情增长、装备及AI统计 |
 | [defence](fields/defence.zh-Hans.html) | 实际值继承；装备生效值单独计算 | R／T／B／P；宽防御、装备正负增量与失败 |

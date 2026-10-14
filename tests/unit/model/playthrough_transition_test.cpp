@@ -105,7 +105,7 @@ int main() {
         OL_CHECK(inherited.ever_joined && inherited.no_magic_count == actor.no_magic_count);
         OL_CHECK(inherited.magic_ids == actor.magic_ids && inherited.magic_levels == actor.magic_levels);
         OL_CHECK(inherited.sex == base_actor.sex && inherited.morality == base_actor.morality);
-        OL_CHECK(inherited.fame == base_actor.fame && inherited.attack_twice == base_actor.attack_twice);
+        OL_CHECK(inherited.fame == base_actor.fame && inherited.attack_twice == actor.attack_twice);
         OL_CHECK(inherited.frames == base_actor.frames && inherited.head_id == base_actor.head_id);
         OL_CHECK(inherited.taking_items == base_actor.taking_items && inherited.taking_counts == base_actor.taking_counts);
         OL_CHECK(inherited.equipment[0U].value == -1 && inherited.equipment[1U].value == -1);
