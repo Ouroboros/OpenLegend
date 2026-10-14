@@ -185,7 +185,7 @@ Windows 发布包由根目录 `release.bat` 生成：
 release.bat v0.1.0
 ```
 
-脚本经 `build.bat app --config Release --clean` 清除全部编译产物后从头编译（保留已下载的依赖源码），再把 `openlegend.exe`、`config\openlegend.example.toml`（改名为 `openlegend.toml`）和 `config\battle_merges.toml` 打成 `dist\OpenLegend-<版本>-windows-x64.zip`。省略版本时取 `git describe --tags --always --dirty`。原版数据目录取 `OPENLEGEND_GAME_DATA_ROOT`，未设置时为仓库旁的 `..\data`。发布包不含原版数据，也不含 ASan 运行库；普通 Release 使用静态 CRT 与静态依赖，不需要附带 DLL。
+脚本经 `build.bat app --config Release --clean` 清除全部编译产物后从头编译（保留已下载的依赖源码），再把 `openlegend.exe`、`config\openlegend.example.toml`（改名为 `openlegend.toml`）和 `config\battle_merges.toml` 打成 `dist\OpenLegend-<版本>-windows-x64.zip`。省略版本时取最近的 tag 名（`git describe --tags --abbrev=0`）。原版数据目录取 `OPENLEGEND_GAME_DATA_ROOT`，未设置时为仓库旁的 `..\data`。发布包不含原版数据，也不含 ASan 运行库；普通 Release 使用静态 CRT 与静态依赖，不需要附带 DLL。
 
 ## 常见问题
 

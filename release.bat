@@ -1,7 +1,7 @@
 @echo off
 rem Clean Release build (all outputs rebuilt) of the Windows app, then pack a distributable zip into dist\.
 rem Usage: release.bat [VERSION]
-rem   VERSION defaults to "git describe --tags --always --dirty".
+rem   VERSION defaults to the latest tag.
 rem   Original game data directory: OPENLEGEND_GAME_DATA_ROOT, or ..\data next to the repository.
 setlocal
 for %%I in ("%~dp0.") do set "PROJECT_ROOT=%%~fI"
@@ -9,7 +9,7 @@ cd /d "%PROJECT_ROOT%"
 
 set "VERSION=%~1"
 if "%VERSION%"=="" (
-    for /f "delims=" %%V in ('git describe --tags --always --dirty') do set "VERSION=%%V"
+    for /f "delims=" %%V in ('git describe --tags --abbrev^=0') do set "VERSION=%%V"
 )
 if "%VERSION%"=="" (
     echo [OpenLegend] Unable to determine the release version.
