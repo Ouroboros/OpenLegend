@@ -187,6 +187,8 @@ struct BattleHudMagic {
     std::int64_t level{};
     std::optional<std::int64_t> power;
     std::optional<std::int64_t> mp_cost;
+    // 内力不足以施展的武功仍列出并灰显，光标跳过。
+    bool available{true};
 };
 
 // 战后升级面板中的一项属性：升级前后的值。

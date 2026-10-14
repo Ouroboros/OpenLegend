@@ -439,7 +439,7 @@ void render_magic_menu(Hud& hud, const battle::BattleHudView& view, const int ce
         if (selected) {
             hud.fill(left + padding / 2, y, width - padding, line, kSelectedCell);
         }
-        const auto color = selected ? kYellow : kWhite;
+        const auto color = !view.magics[index].available ? kDisabled : selected ? kYellow : kWhite;
         if (index < 10U) {
             const char8_t digit = index == 9U ? u8'0' : static_cast<char8_t>(u8'1' + index);
             hud.text(left + padding, y, std::u8string_view{&digit, 1U}, kDim);

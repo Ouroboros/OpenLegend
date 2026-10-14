@@ -4579,13 +4579,35 @@ bool BattleSession::request_player_action_shortcut(const std::size_t index) noex
 }
 
 bool BattleSession::request_player_magic_shortcut(const std::size_t index) noexcept {
+    const auto* role = setup_.combatant_role(current_actor_slot_);
     if (phase_ != BattleSessionPhase::player_magic_selection ||
-        !player_magic_selection_.has_value() ||
-        index >= static_cast<std::size_t>(std::max<std::int16_t>(
-            player_magic_selection_->available_count, 0))) {
+        !player_magic_selection_.has_value() || role == nullptr) {
         return false;
     }
-    player_magic_selection_->cursor = static_cast<std::int16_t>(index);
+    // 数字键对应列表中的显示位置（全部已学武功）；灰显的武功不可选。
+    std::size_t shown = 0U;
+    std::optional<std::int16_t> target_slot;
+    for (std::size_t magic_slot = 0U; magic_slot < model::role_word::magic_count; ++magic_slot) {
+        if (role->magic_ids[magic_slot].value <= 0) {
+            continue;
+        }
+        if (shown++ == index) {
+            target_slot = static_cast<std::int16_t>(magic_slot);
+            break;
+        }
+    }
+    auto& selection = *player_magic_selection_;
+    std::optional<std::int16_t> cursor;
+    for (std::int16_t available = 0; target_slot.has_value() && available < selection.available_count;
+         ++available) {
+        if (selection.available_slots[static_cast<std::size_t>(available)] == *target_slot) {
+            cursor = available;
+        }
+    }
+    if (!cursor.has_value()) {
+        return false;
+    }
+    selection.cursor = *cursor;
     player_magic_shortcut_pending_ = true;
     player_menu_redraw_pending_ = true;
     return true;
@@ -4725,15 +4747,17 @@ BattleHudView BattleSession::hud_view() {
         if (!player_magic_selection_.has_value() || role == nullptr) {
             return view;
         }
-        for (std::int16_t index = 0; index < player_magic_selection_->available_count; ++index) {
-            const auto magic_slot =
-                player_magic_selection_->available_slots[static_cast<std::size_t>(index)];
-            if (magic_slot < 0 ||
-                static_cast<std::size_t>(magic_slot) >= model::role_word::magic_count) {
-                break;
+        // 列出全部已学武功；可施展的与选择状态的可用槽对应，光标换算到显示位置。
+        const auto& selection = *player_magic_selection_;
+        const auto cursor_slot = selection.cursor >= 0 && selection.cursor < selection.available_count
+            ? selection.available_slots[static_cast<std::size_t>(selection.cursor)]
+            : std::int16_t{-1};
+        for (std::size_t magic_slot = 0U; magic_slot < model::role_word::magic_count; ++magic_slot) {
+            const auto magic_id = role->magic_ids[magic_slot].value;
+            if (magic_id <= 0) {
+                continue;
             }
-            const auto magic_id = role->magic_ids[static_cast<std::size_t>(magic_slot)].value;
-            if (magic_id < 0 || static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
+            if (static_cast<std::size_t>(magic_id) >= ranger_.magics.size()) {
                 break;
             }
             const auto& magic = ranger_.magics[static_cast<std::size_t>(magic_id)];
@@ -4752,10 +4776,16 @@ BattleHudView BattleSession::hud_view() {
                 entry.power = effects->attack;
             }
             entry.mp_cost = model::magic_mp_cost(entry.level, base_cost);
+            const auto slot_value = static_cast<std::int16_t>(magic_slot);
+            entry.available = std::find(selection.available_slots.begin(),
+                selection.available_slots.begin() + std::max<std::int16_t>(selection.available_count, 0),
+                slot_value) != selection.available_slots.begin() +
+                    std::max<std::int16_t>(selection.available_count, 0);
+            if (slot_value == cursor_slot) {
+                view.magic_cursor = view.magics.size();
+            }
             view.magics.push_back(entry);
         }
-        view.magic_cursor = static_cast<std::size_t>(std::max<std::int16_t>(
-            player_magic_selection_->cursor, 0));
     } else if (phase_ == BattleSessionPhase::player_action_initial_present ||
                phase_ == BattleSessionPhase::player_action_return_present ||
                phase_ == BattleSessionPhase::player_action) {
