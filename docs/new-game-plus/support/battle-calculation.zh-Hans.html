@@ -118,6 +118,7 @@
 </section>
 <section id="throwing-weapons">
 <h2>玩家与AI投掷暗器</h2>
+<p>伤害型暗器的伤害为<code>伤害 = trunc(|add_hp| × (max(暗器技巧, 0) + 50) × 4 / (50 × 分档除数))</code>，取决于暗器、投掷者的暗器技巧与目标伤势分档（沿用原版除数4／3／2／1），不扣防御、不看目标生命、不调用随机数；详见<a href="../fields/hidden-weapon.zh-Hans.html#throwing-damage">暗器技巧字段页</a>。</p>
 <p>保留原版先完成EFT动画再读取实际载荷的顺序；队伍AI仍从最近一次玩家确认槽读取载荷，动画与消耗使用本次来源槽，敌方AI使用自身来源槽。完整机器依据分别见<a href="../../../research/evidence/functions/Z_DAT/0x3A30B.md">玩家投掷</a>与<a href="../../../research/evidence/functions/Z_DAT/0x3598C.md">AI投掷</a>。</p>
 <pre>H=0时，除数=4
 H&gt;0时，以100×H与33×B、66×B比较，依次取除数3、2、1

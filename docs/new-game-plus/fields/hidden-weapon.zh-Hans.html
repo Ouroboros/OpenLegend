@@ -33,6 +33,21 @@
 <tr><td>写入路径</td><td>NG+的继承、升级与秘笈修炼保留原有增长量，不按周目封顶；溢出仍依64位存储合同拒绝。</td></tr>
 </tbody></table>
 </section>
+<section id="throwing-damage">
+<h2>暗器伤害</h2>
+<p>玩家与AI投掷<code>add_hp</code>为负的暗器时，伤害由暗器、投掷者的暗器技巧和目标伤势分档决定：<code>伤害 = trunc(|add_hp| × (max(暗器技巧, 0) + 50) × 4 / (50 × 分档除数))</code>。分档除数沿用原版：目标内伤0为4，<code>0&lt;伤势比例≤33%</code>为3、<code>≤66%</code>为2、更高为1，即相对倍率1、4/3、2、4。目标无内伤时伤害等于暗器伤害值 × (技巧 + 50) / 50，技巧每50点再加一份暗器伤害值。不读取目标生命或防御，不调用随机数；各周目及是否开启NG+均相同。原版的随机0～4与<code>(… − 2 × 暗器技巧) / 3</code>算式只保留给<code>add_hp</code>非负的投掷。</p>
+<p>下表为目标无内伤时的伤害：</p>
+<table><thead><tr><th>暗器（|add_hp|）</th><th>技巧0</th><th>50</th><th>100</th><th>150</th><th>200</th><th>300</th><th>500</th></tr></thead><tbody>
+<tr><td>飛蝗石 30</td><td>30</td><td>60</td><td>90</td><td>120</td><td>150</td><td>210</td><td>330</td></tr>
+<tr><td>飛刀 40</td><td>40</td><td>80</td><td>120</td><td>160</td><td>200</td><td>280</td><td>440</td></tr>
+<tr><td>玉蜂針 50</td><td>50</td><td>100</td><td>150</td><td>200</td><td>250</td><td>350</td><td>550</td></tr>
+<tr><td>冰魄銀針 70</td><td>70</td><td>140</td><td>210</td><td>280</td><td>350</td><td>490</td><td>770</td></tr>
+<tr><td>金蛇錐 80</td><td>80</td><td>160</td><td>240</td><td>320</td><td>400</td><td>560</td><td>880</td></tr>
+<tr><td>霹靂彈 100</td><td>100</td><td>200</td><td>300</td><td>400</td><td>500</td><td>700</td><td>1100</td></tr>
+</tbody></table>
+<p>例：霹靂彈、技巧200时，目标无内伤／伤势≤33%／≤66%／更高分别为500／666／1000／2000。</p>
+<p>伤害按目标实际生命扣减并夹到0；新增内伤仍按<a href="hurt-medicine.zh-Hans.html#hurt-gain">新增内伤</a>（原路径除数4）计算，带毒暗器的上毒另按<a href="#poison-throw-all-ng">下文</a>与统一上毒规则。AI是否选择投掷的判断沿用原版。</p>
+</section>
 <section id="poison-throw-all-ng">
       <h3>4.4 玩家投掷带毒暗器时技巧项的全周目改号规则（已确认）</h3>
       <div class="plain">

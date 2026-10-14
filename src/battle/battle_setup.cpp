@@ -87,6 +87,41 @@ struct ThrowingWeaponHpResult {
     std::int64_t damage{};
 };
 
+// 伤害型暗器的技巧放大：伤害 = 暗器伤害值 × (暗器技巧 + 50) / 50 × 伤势分档倍率。
+constexpr std::int64_t kThrowingSkillPerWeapon = 50;
+
+// 原版投掷的目标伤势分档除数：内伤0为4，伤势比例≤33%为3、≤66%为2、更高为1。
+NODISCARD std::optional<std::int64_t> throwing_hurt_divisor(
+    const model::RoleState& target, const model::PlaythroughLimits& limits) noexcept {
+    if (target.hurt <= 0) {
+        return 4;
+    }
+    const auto scaled_hurt = model::checked_multiply(target.hurt, 100);
+    const auto lower_threshold = model::checked_multiply(limits.hurt_ratio_denominator, 33);
+    const auto upper_threshold = model::checked_multiply(limits.hurt_ratio_denominator, 66);
+    if (limits.hurt_ratio_denominator <= 0 || !scaled_hurt.has_value() ||
+        !lower_threshold.has_value() || !upper_threshold.has_value()) {
+        return std::nullopt;
+    }
+    return *scaled_hurt <= *lower_threshold ? 3 : *scaled_hurt <= *upper_threshold ? 2 : 1;
+}
+
+// 原版投掷HP变化：add_hp按目标伤势分档折算，减去随机0～4与2倍暗器技巧后除以3。
+NODISCARD std::optional<std::int64_t> legacy_throwing_hp_delta(
+    const model::RoleState& actor,
+    const std::int64_t item_hp,
+    const std::int64_t divisor,
+    random::LegacyRandom& random) {
+    const auto randomized_base = model::checked_subtract(item_hp / divisor, random.bounded(5));
+    const auto technique = model::checked_multiply(actor.hidden_weapon, 2);
+    const auto numerator = randomized_base.has_value() && technique.has_value()
+        ? model::checked_subtract(*randomized_base, *technique) : std::nullopt;
+    if (!numerator.has_value()) {
+        return std::nullopt;
+    }
+    return *numerator / 3;
+}
+
 NODISCARD std::optional<ThrowingWeaponHpResult> throwing_weapon_hp_result(
     const model::RoleState& actor,
     const model::RoleState& target,
@@ -96,27 +131,31 @@ NODISCARD std::optional<ThrowingWeaponHpResult> throwing_weapon_hp_result(
     if (target.hurt < 0 || target.maximum_hp < 0) {
         return std::nullopt;
     }
-    std::int64_t divisor = 4;
-    if (target.hurt > 0) {
-        const auto scaled_hurt = model::checked_multiply(target.hurt, 100);
-        const auto lower_threshold = model::checked_multiply(limits.hurt_ratio_denominator, 33);
-        const auto upper_threshold = model::checked_multiply(limits.hurt_ratio_denominator, 66);
-        if (limits.hurt_ratio_denominator <= 0 || !scaled_hurt.has_value() ||
-            !lower_threshold.has_value() || !upper_threshold.has_value()) {
-            return std::nullopt;
-        }
-        divisor = *scaled_hurt <= *lower_threshold ? 3
-            : *scaled_hurt <= *upper_threshold ? 2 : 1;
-    }
-    const auto randomized_base = model::checked_subtract(
-        item.word(model::item_word::add_hp) / divisor, random.bounded(5));
-    const auto technique = model::checked_multiply(actor.hidden_weapon, 2);
-    const auto numerator = randomized_base.has_value() && technique.has_value()
-        ? model::checked_subtract(*randomized_base, *technique) : std::nullopt;
-    if (!numerator.has_value()) {
+    const std::int64_t item_hp = item.word(model::item_word::add_hp);
+    const auto divisor = throwing_hurt_divisor(target, limits);
+    if (!divisor.has_value()) {
         return std::nullopt;
     }
-    const auto hp_delta = *numerator / 3;
+    std::int64_t hp_delta{};
+    if (item_hp < 0) {
+        // 伤害型暗器：暗器伤害值 × (暗器技巧 + 50) / 50，再按原版目标伤势分档放大
+        // （内伤0为1倍，伤势比例≤33%为4/3、≤66%为2、更高为4倍）；不扣防御，不用随机数。
+        const auto skill = std::max<std::int64_t>(actor.hidden_weapon, 0);
+        const auto factor = model::checked_add(skill, kThrowingSkillPerWeapon);
+        const auto scaled = factor.has_value()
+            ? model::checked_multiply(-item_hp, *factor) : std::nullopt;
+        const auto banded = scaled.has_value() ? model::checked_multiply(*scaled, 4) : std::nullopt;
+        if (!banded.has_value()) {
+            return std::nullopt;
+        }
+        hp_delta = -(*banded / (kThrowingSkillPerWeapon * *divisor));
+    } else {
+        const auto legacy_delta = legacy_throwing_hp_delta(actor, item_hp, *divisor, random);
+        if (!legacy_delta.has_value()) {
+            return std::nullopt;
+        }
+        hp_delta = *legacy_delta;
+    }
     const auto gained_hurt = hp_delta < 0
         ? model::hurt_gain(-hp_delta, target.maximum_hp, target.maximum_mp, model::kThrowingHurtDivisor)
         : std::optional<std::int64_t>{0};
