@@ -28,6 +28,8 @@ struct ItemListPageView {
     // 加成 / 基准 计算，正的生命值、内力值加成显示为百分比；不大于0时按原数值显示。
     std::int64_t hp_percent_base{};
     std::int64_t mp_percent_base{};
+    // 当前周目；装备的攻击、防御加成按周目数显示，与战斗结算一致。
+    std::int64_t playthrough{1};
 };
 
 NODISCARD bool render_item_list_page(

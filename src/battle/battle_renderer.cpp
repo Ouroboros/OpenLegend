@@ -71,14 +71,18 @@ struct CharacterStatusField {
     std::optional<std::int64_t> value;
 };
 
+// 攻击、防御含装备加成，装备加成与战斗结算一致乘以周目数；轻功加成不乘。
 NODISCARD std::array<CharacterStatusField, 11> character_status_fields(
-    const model::RuntimeRangerState& ranger, const model::RoleState& role) {
+    const model::RuntimeRangerState& ranger, const model::RoleState& role,
+    const std::int64_t playthrough = 1) {
     const auto effective = [&](const std::size_t role_field, const std::size_t item_field) {
         std::optional<std::int64_t> value = role.word(role_field);
+        const auto multiplier = item_field == model::item_word::add_speed ? 1 : playthrough;
         for (const auto equipment : role.equipment) {
             if (equipment.value >= 0 && static_cast<std::size_t>(equipment.value) < ranger.items.size()) {
-                value = model::checked_add(*value,
-                    ranger.items[static_cast<std::size_t>(equipment.value)].word(item_field));
+                const auto bonus = model::checked_multiply(
+                    ranger.items[static_cast<std::size_t>(equipment.value)].word(item_field), multiplier);
+                value = bonus.has_value() ? model::checked_add(*value, *bonus) : std::nullopt;
                 if (!value) {
                     return value;
                 }
@@ -1271,8 +1275,9 @@ bool BattleRenderer::draw_text_big5(
 
 std::array<std::pair<std::u8string_view, std::optional<std::int64_t>>, 11>
 BattleRenderer::character_status_abilities(
-    const model::RuntimeRangerState& ranger, const model::RoleState& role) const {
-    const auto fields = character_status_fields(ranger, role);
+    const model::RuntimeRangerState& ranger, const model::RoleState& role,
+    const std::int64_t playthrough) const {
+    const auto fields = character_status_fields(ranger, role, playthrough);
     std::array<std::pair<std::u8string_view, std::optional<std::int64_t>>, 11> result{};
     for (std::size_t index = 0U; index < fields.size(); ++index) {
         result[index] = {fields[index].label, fields[index].value};

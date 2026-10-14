@@ -75,7 +75,8 @@ NODISCARD bool draw_value_row(
 NODISCARD bool draw_summary_page(
     const battle::BattleRenderer& data, StatusLayout& layout, const ContentArea& area,
     const model::RuntimeRangerState& ranger, const model::RoleState& role,
-    const model::PlaythroughLimits& limits) {
+    const model::PlaythroughLimits& limits,
+    const std::int64_t playthrough) {
     const auto hurt = model::hurt_band(role.hurt, limits.hurt_ratio_denominator);
     const auto hurt_colors = hurt == model::HurtBand::severe ? text_colors::severe_injury
         : hurt == model::HurtBand::moderate ? text_colors::moderate_injury : text_colors::notice;
@@ -192,8 +193,14 @@ NODISCARD bool draw_summary_page(
             static_cast<std::size_t>(equipment.value) >= ranger.items.size()) {
             continue;
         }
-        if (!layout.big5(side_left, row_y,
-                item_name(equipment.value), text_colors::notice)) {
+        const auto name = item_name(equipment.value);
+        if (!layout.big5(side_left, row_y, name, text_colors::notice)) {
+            return false;
+        }
+        // 装备攻防加成为周目数倍，名后显示“+(周目−1)”。
+        if (playthrough > 1 &&
+            !layout.text(side_left + layout.big5_width(name) + layout.length(4), row_y,
+                u8"+" + decimal_text(playthrough - 1), text_colors::notice)) {
             return false;
         }
     }
@@ -202,9 +209,10 @@ NODISCARD bool draw_summary_page(
 
 NODISCARD bool draw_ability_page(
     const battle::BattleRenderer& data, StatusLayout& layout, const ContentArea& area,
-    const model::RuntimeRangerState& ranger, const model::RoleState& role) {
+    const model::RuntimeRangerState& ranger, const model::RoleState& role,
+    const std::int64_t playthrough) {
     std::array<ValueRow, 19> rows{};
-    const auto abilities = data.character_status_abilities(ranger, role);
+    const auto abilities = data.character_status_abilities(ranger, role, playthrough);
     for (std::size_t index = 0U; index < abilities.size(); ++index) {
         rows[index] = {abilities[index].first,
             abilities[index].second ? decimal_text(*abilities[index].second)
@@ -347,7 +355,8 @@ bool render_character_status_page(
     const std::size_t cursor,
     const std::uint8_t page,
     const model::PlaythroughLimits& limits,
-    render::RgbaFramebuffer& framebuffer) {
+    render::RgbaFramebuffer& framebuffer,
+    const std::int64_t playthrough) {
     const auto viewport = render::fit_legacy_reference_viewport(
         framebuffer.logical_width(), framebuffer.logical_height());
     if (!viewport.valid() || roles.empty() || cursor >= roles.size() ||
@@ -438,8 +447,9 @@ bool render_character_status_page(
     // 页签内容用页面字号的80%，人物列表与页签标题保持原字号。
     const auto draw_page = [&](StatusLayout& page_layout, const ContentArea& page_area) {
         switch (page) {
-        case 0U: return draw_summary_page(data, page_layout, page_area, ranger, role, limits);
-        case 1U: return draw_ability_page(data, page_layout, page_area, ranger, role);
+        case 0U:
+            return draw_summary_page(data, page_layout, page_area, ranger, role, limits, playthrough);
+        case 1U: return draw_ability_page(data, page_layout, page_area, ranger, role, playthrough);
         default: return draw_magic_page(page_layout, page_area, ranger, role);
         }
     };

@@ -104,7 +104,8 @@ public:
 
     NODISCARD std::array<std::pair<std::u8string_view, std::optional<std::int64_t>>, 11>
     character_status_abilities(
-        const model::RuntimeRangerState& ranger, const model::RoleState& role) const;
+        const model::RuntimeRangerState& ranger, const model::RoleState& role,
+        std::int64_t playthrough = 1) const;
 
     NODISCARD const resource::SpriteFrameView* portrait_frame(std::int16_t portrait_id) const;
 

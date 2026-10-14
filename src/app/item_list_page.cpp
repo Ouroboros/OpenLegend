@@ -29,6 +29,8 @@ static_assert(kItemEffectLabels.size() ==
 constexpr std::size_t kChangeMpTypeEffectIndex =
     model::item_word::change_mp_type - model::item_word::add_hp;
 constexpr std::size_t kAddMpEffectIndex = model::item_word::add_mp - model::item_word::add_hp;
+constexpr std::size_t kAddAttackEffectIndex = model::item_word::add_attack - model::item_word::add_hp;
+constexpr std::size_t kAddDefenceEffectIndex = model::item_word::add_defence - model::item_word::add_hp;
 
 struct Requirement {
     std::size_t item_word;
@@ -69,6 +71,13 @@ NODISCARD std::span<const std::uint8_t> role_name(
 
 NODISCARD std::u8string signed_text(const std::int64_t value) {
     return value > 0 ? u8"+" + decimal_text(value) : decimal_text(value);
+}
+
+// 装备名后缀：第n周目装备攻防加成为n倍，显示“+(n−1)”；第一周目与非装备为空。
+NODISCARD std::u8string equipment_suffix(
+    const model::ItemRecord& item, const std::int64_t playthrough) {
+    return item.word(model::item_word::item_type) == 1 && playthrough > 1
+        ? u8"+" + decimal_text(playthrough - 1) : std::u8string{};
 }
 
 // 按可用宽度切分 Big5 文本为多行。
@@ -137,7 +146,7 @@ NODISCARD bool draw_detail(
     const battle::BattleRenderer& data, PageLayout& layout, const ContentArea& area,
     const model::RuntimeRangerState& ranger, const std::size_t inventory_slot,
     const std::u8string_view coordinate_text, const std::int64_t hp_percent_base,
-    const std::int64_t mp_percent_base, const int row_step) {
+    const std::int64_t mp_percent_base, const std::int64_t playthrough, const int row_step) {
     const auto item_id = ranger.header.inventory_item(inventory_slot).value;
     if (item_id < 0 || static_cast<std::size_t>(item_id) >= ranger.items.size()) {
         return true;
@@ -157,10 +166,18 @@ NODISCARD bool draw_detail(
     if (!layout.big5(name_left, area.top, name, text_colors::selected)) {
         return false;
     }
+    auto name_right = name_left + layout.big5_width(name);
+    if (const auto suffix = equipment_suffix(item, playthrough); !suffix.empty()) {
+        name_right += layout.length(4);
+        if (!layout.text(name_right, area.top, suffix, text_colors::selected)) {
+            return false;
+        }
+        name_right += layout.utf8_width(suffix);
+    }
     std::array<std::uint8_t, model::role_word::name_bytes> user_storage{};
     if (const auto user = role_name(ranger, item.word(model::item_word::user), user_storage);
         !user.empty() &&
-        !layout.big5(name_left + layout.big5_width(name) + layout.length(8), area.top, user,
+        !layout.big5(name_right + layout.length(8), area.top, user,
             text_colors::notice)) {
         return false;
     }
@@ -222,7 +239,11 @@ NODISCARD bool draw_detail(
             continue;
         }
         if (value != 0) {
-            effects.push_back({std::u8string{kItemEffectLabels[index]}, signed_text(value), {}});
+            // 装备的攻击、防御加成在战斗中乘以周目数，轻功不乘。
+            const auto shown = item_type == 1 &&
+                    (index == kAddAttackEffectIndex || index == kAddDefenceEffectIndex)
+                ? value * playthrough : value;
+            effects.push_back({std::u8string{kItemEffectLabels[index]}, signed_text(shown), {}});
         }
     }
     const auto magic_id = item.word(model::item_word::magic_id);
@@ -381,7 +402,14 @@ bool render_item_list_page(
         const auto top = content_top + static_cast<int>(row) * row_step;
         const auto colors =
             index == view.cursor ? text_colors::selected : text_colors::menu_normal;
-        if (!list_layout.big5(list_left + layout.length(4), top, item_name(item), colors)) {
+        const auto name = item_name(item);
+        if (!list_layout.big5(list_left + layout.length(4), top, name, colors)) {
+            return false;
+        }
+        if (const auto suffix = equipment_suffix(item, view.playthrough);
+            !suffix.empty() &&
+            !list_layout.text(list_left + layout.length(8) + list_layout.big5_width(name), top,
+                suffix, colors)) {
             return false;
         }
     }
@@ -404,7 +432,7 @@ bool render_item_list_page(
         ContentArea{detail_left + padding, panel_right - 2 * padding,
             content_top + padding, content_bottom - padding},
         ranger, static_cast<std::size_t>(view.inventory_slots[view.cursor]),
-        view.coordinate_text, view.hp_percent_base, view.mp_percent_base,
+        view.coordinate_text, view.hp_percent_base, view.mp_percent_base, view.playthrough,
         list_line + layout.length(2));
 }
 

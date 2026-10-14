@@ -3835,7 +3835,8 @@ bool LegacyGameRuntime::render_status_page_overlay(
             cursor,
             page,
             *limits,
-            framebuffer)) {
+            framebuffer,
+            snapshot->playthrough)) {
         // 状态页绘制失败只记录错误，不让渲染链把游戏杀掉。
         diagnostics::log_error(
             "character status page render failed cursor=" + std::to_string(cursor) +
@@ -3902,7 +3903,8 @@ bool LegacyGameRuntime::render_item_page_overlay(
                 active_tab,
                 coordinate_text,
                 startup_resources_.original_maximum_hp(),
-                startup_resources_.original_maximum_mp()},
+                startup_resources_.original_maximum_mp(),
+                game_state_.snapshot() != nullptr ? game_state_.snapshot()->playthrough : 1},
             framebuffer)) {
         // 物品页绘制失败只记录错误，不让渲染链退出游戏。
         diagnostics::log_error("item list page render failed cursor=" + std::to_string(cursor));

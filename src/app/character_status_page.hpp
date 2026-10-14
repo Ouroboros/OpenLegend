@@ -25,6 +25,7 @@ NODISCARD bool render_character_status_page(
     std::size_t cursor,
     std::uint8_t page,
     const model::PlaythroughLimits& limits,
-    render::RgbaFramebuffer& framebuffer);
+    render::RgbaFramebuffer& framebuffer,
+    std::int64_t playthrough = 1);
 
 }  // namespace openlegend::app
