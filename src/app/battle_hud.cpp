@@ -316,22 +316,26 @@ void render_info_bar(Hud& hud, const battle::BattleHudView& view) {
             hud.box(x, box_top, box_width, bar_height - 6 * unit);
         }
         const auto content_x = x + inset;
-        hud.big5(content_x, y, name_of(combatant), name_color(combatant));
+        const auto name = name_of(combatant);
+        hud.big5(content_x, y, name, name_color(combatant));
         const auto level = level_text(combatant.level);
-        hud.text(content_x + inner - hud.text_width(level), y, level, kDim);
+        const auto level_x = content_x + inner - hud.text_width(level);
+        hud.text(level_x, y, level, kDim);
+        // 中毒、内伤标签排在名字右侧，放不下时不画，不压到等级。
+        auto tag_x = content_x + hud.big5_width(name) + 2 * unit;
+        for (const auto& [tag, color] : condition_tags(combatant)) {
+            if (tag_x + hud.text_width(tag) > level_x - unit) {
+                break;
+            }
+            hud.text(tag_x, y, tag, color);
+            tag_x += hud.text_width(tag) + unit;
+        }
         hud.bar(content_x, y + line, inner, strings::kHudLifeShort, combatant.hp,
             combatant.maximum_hp, kHpFill);
         hud.bar(content_x, y + 2 * line, inner, strings::kHudMpShort, combatant.mp,
             combatant.maximum_mp, mp_fill(combatant.mp_type));
-        // 体力条占一半宽度，右侧显示中毒、内伤。
-        const auto power_width = inner / 2;
-        hud.bar(content_x, y + 3 * line, power_width, strings::kHudPowerShort,
+        hud.bar(content_x, y + 3 * line, inner, strings::kHudPowerShort,
             combatant.physical_power, 100, kPowerFill);
-        auto tag_x = content_x + power_width + unit;
-        for (const auto& [tag, color] : condition_tags(combatant)) {
-            hud.text(tag_x, y + 3 * line, tag, color);
-            tag_x += hud.text_width(tag) + unit;
-        }
     }
 }
 
