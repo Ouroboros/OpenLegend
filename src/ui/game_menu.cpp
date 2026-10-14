@@ -225,8 +225,11 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
         return {};
     }
     if (screen_ == GameMenuScreen::item_effect || screen_ == GameMenuScreen::notice) {
+        // 物品效果与物品相关提示看完后回到物品页，其余提示回主菜单。
         if (translated_key != 0U) {
-            screen_ = GameMenuScreen::main;
+            screen_ = screen_ == GameMenuScreen::item_effect ||
+                    notice_ != GameMenuNotice::leave_protagonist
+                ? GameMenuScreen::items : GameMenuScreen::main;
         }
         return {};
     }
@@ -279,7 +282,9 @@ GameMenuResult GameMenuController::handle_key(const std::uint8_t translated_key)
                 party_stage_ = GameMenuPartyStage::source;
                 party_selection_ = source_party_selection_;
             } else {
-                screen_ = GameMenuScreen::main;
+                // 取消选择物品使用对象时回到物品页。
+                screen_ = pending_party_command_ == GameMenuCommand::items
+                    ? GameMenuScreen::items : GameMenuScreen::main;
             }
             return {};
         case GameMenuScreen::items:

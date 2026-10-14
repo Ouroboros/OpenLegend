@@ -4318,7 +4318,8 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
         }
         (void)battle::equip_role_item(*ranger, role_id, item_id);
         clear_pending();
-        game_menu_.show_main();
+        update_menu_counts();
+        game_menu_.show_items();
         return;
     }
     if (item_type == 2) {
@@ -4351,7 +4352,8 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
         }
         (void)battle::assign_role_practice_item(*ranger, role_id, item_id);
         clear_pending();
-        game_menu_.show_main();
+        update_menu_counts();
+        game_menu_.show_items();
         return;
     }
     if (item_type == 3) {
@@ -4380,7 +4382,7 @@ void LegacyGameRuntime::handle_menu_item_result(const ui::GameMenuResult result)
             game_menu_.show_item_effect();
         } else {
             clear_pending();
-            game_menu_.show_main();
+            game_menu_.show_items();
         }
         return;
     }
@@ -4431,7 +4433,7 @@ void LegacyGameRuntime::handle_menu_item_confirmation(
         pending_menu_item_id_.reset();
         pending_menu_item_role_.reset();
         pending_menu_item_effect_.reset();
-        game_menu_.show_main();
+        game_menu_.show_items();
         return;
     }
     if (confirmation == ui::GameMenuItemConfirmation::practice_reassign) {
@@ -4451,7 +4453,8 @@ void LegacyGameRuntime::handle_menu_item_confirmation(
     pending_menu_item_id_.reset();
     pending_menu_item_role_.reset();
     pending_menu_item_effect_.reset();
-    game_menu_.show_main();
+    update_menu_counts();
+    game_menu_.show_items();
 }
 
 bool LegacyGameRuntime::begin_world_leave_event(const std::int16_t role_id) {
