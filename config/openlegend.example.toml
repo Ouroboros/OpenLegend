@@ -25,7 +25,7 @@ level = "info"
 # 姓名输入默认使用原版内建注音键盘。设为 "modern" 可改用 SDL／系统文字输入
 # 与宿主输入法。姓名画面中可按 F12 在两种模式间切换，仅影响当前会话。
 
-name_entry = "legacy"
+name_entry = "modern"
 
 # 原生平滑移动默认开启。设为 false 可恢复原版逐格移动；不会改变移动速度或存档。
 
@@ -34,7 +34,7 @@ smooth_movement = true
 # 首次移动后，按住方向键开始连续移动前的延迟。
 # 设为 0 表示立即连续移动。
 
-movement_repeat_delay_ms = 500
+movement_repeat_delay_ms = 200
 
 # 菜单导航开始重复前的延迟，以及后续每次重复的间隔。
 # 存档列表的 Page Up/Down 也使用这组参数。延迟必须非负，间隔必须为正数。
@@ -52,7 +52,7 @@ world_map_keys = ["M", "Tab"]
 # FI/FO 调色板帧之间的延迟。默认值匹配 VGA mode 13h。
 # 设为 0 表示淡变帧之间不等待。
 
-fade_frame_delay_ms = 14.268
+fade_frame_delay_ms = 5
 
 [window]
 
@@ -70,6 +70,6 @@ maximized = false
 # 四舍五入计算宽高；存在 scale 时优先于 width 和 height。未配置 scale 时，
 # 宽度范围为 320..1280，高度范围为 200..800，宽高必须同时提供或同时省略。
 
-# scale = 1.5
-width = 320
-height = 200
+scale = 2
+# width = 320
+# height = 200
