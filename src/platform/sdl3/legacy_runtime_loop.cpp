@@ -271,6 +271,15 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
         game.set_save_slot_memory(settings.last_save_slot, settings.configuration_path);
         game.load_battle_merge_rules(
             settings.configuration_path.parent_path() / "battle_merges.toml");
+        if (settings.mod_configuration.has_value()) {
+            if (const auto error = game.load_mod_configuration(*settings.mod_configuration);
+                !error.empty()) {
+                diagnostics::log_critical("mod configuration failed: " + error);
+                report_runtime_error("mod configuration", error);
+                result.status = 5;
+                return result;
+            }
+        }
         game.set_world_minimap_keys(settings.world_map_keys);
         const bool native_motion_enabled =
             settings.movement_step_duration > std::chrono::nanoseconds::zero();

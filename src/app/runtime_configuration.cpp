@@ -1,6 +1,8 @@
 #include "openlegend/attributes.hpp"
 #include "openlegend/app/runtime_configuration.hpp"
 
+#include "mod_configuration.hpp"
+
 #include "new_game_plus_configuration.hpp"
 
 #include "openlegend/persistence/save_slot.hpp"
@@ -195,6 +197,35 @@ NODISCARD SaveDirectoryConfigurationLoadResult save_directory_configuration_from
     }
     result.directory = std::move(directory);
     result.configured = true;
+    return result;
+}
+
+NODISCARD ModPathConfigurationLoadResult mod_path_configuration_from_document(
+    const toml::table& document,
+    const std::filesystem::path& executable_directory) {
+    ModPathConfigurationLoadResult result;
+    const auto* paths = document.get_as<toml::table>(PathsConfigurationLoadResult::toml_table_name);
+    const auto* node = paths != nullptr
+        ? paths->get(PathsConfigurationLoadResult::mod_toml_key) : nullptr;
+    if (node == nullptr) {
+        return result;
+    }
+    const auto value = node->value<std::string>();
+    if (!value.has_value() || value->empty()) {
+        result.error = "[paths] mod must be a non-empty string";
+        return result;
+    }
+    auto path = path_from_utf8(*value);
+    if (path.is_relative()) {
+        path = executable_directory / path;
+    }
+    std::error_code error;
+    path = std::filesystem::absolute(path, error).lexically_normal();
+    if (error) {
+        result.error = "cannot resolve [paths] mod: " + error.message();
+        return result;
+    }
+    result.path = std::move(path);
     return result;
 }
 
@@ -1114,11 +1145,27 @@ RuntimeConfiguration load_runtime_configuration(
     const auto document = read_configuration_document(configuration_path);
 
     RuntimeConfiguration configuration;
+    // MOD配置的[paths]覆盖openlegend.toml的data_dir、save_dir（命令行--data-dir仍优先）。
+    std::optional<ModConfiguration> mod;
+    if (document.status == ConfigurationDocumentStatus::ready) {
+        configuration.paths.mod = mod_path_configuration_from_document(
+            document.values, executable_directory);
+        if (configuration.paths.mod.path.has_value()) {
+            auto loaded = load_mod_configuration(*configuration.paths.mod.path);
+            if (!loaded.error.empty()) {
+                configuration.paths.mod.error = std::move(loaded.error);
+            } else {
+                mod = std::move(loaded.configuration);
+            }
+        }
+    }
     auto data_directory_candidate = command_line_candidate(arguments, launch_directory);
     if (data_directory_candidate.status == DataDirectoryStatus::ready &&
         data_directory_candidate.source != DataDirectorySource::command_line) {
-        data_directory_candidate =
-            configuration_candidate(document, executable_directory, launch_directory);
+        data_directory_candidate = mod.has_value() && mod->data_directory.has_value()
+            ? candidate_for_path(DataDirectorySource::mod_configuration,
+                  path_from_utf8(*mod->data_directory), executable_directory)
+            : configuration_candidate(document, executable_directory, launch_directory);
     }
     configuration.paths.data_directory =
         validate_candidate(std::move(data_directory_candidate));
@@ -1126,6 +1173,27 @@ RuntimeConfiguration load_runtime_configuration(
     if (document.status == ConfigurationDocumentStatus::ready) {
         configuration.paths.save_directory = save_directory_configuration_from_document(
             document.values, executable_directory);
+        auto& save_directory = configuration.paths.save_directory;
+        if (save_directory.status == SaveDirectoryConfigurationStatus::ready &&
+            configuration.paths.mod.path.has_value() &&
+            ((mod.has_value() && mod->save_directory.has_value()) || !save_directory.configured)) {
+            auto directory = mod.has_value() && mod->save_directory.has_value()
+                ? path_from_utf8(*mod->save_directory)
+                : std::filesystem::path{"save"} / configuration.paths.mod.path->stem();
+            if (directory.is_relative()) {
+                directory = executable_directory / directory;
+            }
+            std::error_code error;
+            directory = std::filesystem::absolute(directory, error).lexically_normal();
+            if (error) {
+                save_directory.status = SaveDirectoryConfigurationStatus::directory_query_failed;
+                save_directory.detail = error.message();
+            } else {
+                save_directory.directory = std::move(directory);
+                save_directory.configured = true;
+                save_directory.from_mod = true;
+            }
+        }
         configuration.logging = logging_configuration_from_document(
             document.values,
             executable_directory,

@@ -1,12 +1,14 @@
 add_library(
     openlegend_app
     STATIC
+        asset_fingerprint_check.cpp
         battle_hud.cpp
         battle_merge_rules.cpp
         character_status_page.cpp
         display_resolution.cpp
         item_list_page.cpp
         legacy_game_runtime.cpp
+        mod_configuration.cpp
         mode_coordinator.cpp
         new_game_plus_configuration.cpp
         runtime_configuration.cpp

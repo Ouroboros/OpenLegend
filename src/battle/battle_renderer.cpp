@@ -6,7 +6,6 @@
 #include <array>
 #include <bit>
 #include <charconv>
-#include <cstdio>
 #include <iterator>
 
 #include "openlegend/compat/byte_reader.hpp"
@@ -185,14 +184,20 @@ bool BattleRenderer::load_battlefield_assets() {
         return true;
     }
 
-    std::array<char, 7> index_name{};
-    std::array<char, 7> group_name{};
-    static_cast<void>(std::snprintf(
-        index_name.data(), index_name.size(), "WDX%03d", battlefield_id_));
-    static_cast<void>(std::snprintf(
-        group_name.data(), group_name.size(), "WMP%03d", battlefield_id_));
-    const auto battlefield_index = data_root_.read(index_name.data());
-    const auto battlefield_group = data_root_.read(group_name.data());
+    const auto& names = data_root_.asset_names();
+    const auto index_name = names.name(resource::AssetFileKind::battlefield_index, battlefield_id_);
+    const auto group_name = names.name(resource::AssetFileKind::battlefield_group, battlefield_id_);
+    if (!index_name.has_value() || !group_name.has_value()) {
+        error_ = "no battlefield file name for battlefield " + std::to_string(battlefield_id_);
+        return false;
+    }
+    auto battlefield_index = data_root_.read(*index_name);
+    auto battlefield_group = data_root_.read(*group_name);
+    // 多个战场共用一份贴图时（部分MOD），索引末尾没有0结束标记，补上后格式与原版相同。
+    if (battlefield_index && battlefield_index.bytes.size() >= 4U &&
+        compat::read_u32le(battlefield_index.bytes, battlefield_index.bytes.size() - 4U) != 0U) {
+        battlefield_index.bytes.insert(battlefield_index.bytes.end(), 4U, std::uint8_t{0U});
+    }
     if (!battlefield_index) {
         error_ = battlefield_index.error;
         return false;
@@ -1348,15 +1353,14 @@ bool BattleRenderer::load_fight_package(const std::int16_t fight_head_id) {
     if (fight_head_id < 0 || fight_head_id > 999) {
         return false;
     }
-    std::array<char, 13> index_name{};
-    std::array<char, 13> group_name{};
-    static_cast<void>(std::snprintf(
-        index_name.data(), index_name.size(), "FIGHT%03d.IDX", fight_head_id));
-    static_cast<void>(std::snprintf(
-        group_name.data(), group_name.size(), "FIGHT%03d.GRP", fight_head_id));
+    const auto& names = data_root_.asset_names();
+    const auto index_name = names.name(resource::AssetFileKind::fight_index, fight_head_id);
+    const auto group_name = names.name(resource::AssetFileKind::fight_group, fight_head_id);
+    if (!index_name.has_value() || !group_name.has_value()) {
+        return false;
+    }
     auto archive = resource::PackedArchive::open(
-        data_root_.path() / index_name.data(),
-        data_root_.path() / group_name.data());
+        data_root_.path() / *index_name, data_root_.path() / *group_name);
     if (!archive.valid()) {
         return false;
     }

@@ -27,6 +27,7 @@ enum class DataDirectorySource {
     launch_directory,
     configuration_file,
     command_line,
+    mod_configuration,
 };
 
 enum class DataDirectoryStatus {
@@ -62,20 +63,33 @@ struct SaveDirectoryConfigurationLoadResult {
     SaveDirectoryConfigurationStatus status{SaveDirectoryConfigurationStatus::ready};
     std::filesystem::path directory;
     bool configured{};
+    // 来自MOD配置：MOD的[paths] save_dir，或指定了MOD而两处都未写save_dir时默认的
+    // 可执行文件目录下save/<MOD配置文件名>。
+    bool from_mod{};
     std::string detail;
+};
+
+// [paths] mod：与data_dir配套的MOD配置文件；未配置时使用程序内置的原版设定。
+struct ModPathConfigurationLoadResult {
+    std::optional<std::filesystem::path> path;
+    // 取值无效时给出说明，使用内置命名。
+    std::string error;
 };
 
 struct PathsConfigurationLoadResult {
     static constexpr std::string_view toml_table_name = "paths";
     static constexpr std::string_view data_directory_toml_key = "data_dir";
     static constexpr std::string_view save_directory_toml_key = "save_dir";
-    static constexpr std::array<std::string_view, 2U> toml_field_order{
+    static constexpr std::string_view mod_toml_key = "mod";
+    static constexpr std::array<std::string_view, 3U> toml_field_order{
         data_directory_toml_key,
         save_directory_toml_key,
+        mod_toml_key,
     };
 
     DataDirectoryResolution data_directory;
     SaveDirectoryConfigurationLoadResult save_directory;
+    ModPathConfigurationLoadResult mod;
 };
 
 NODISCARD DataDirectoryResolution resolve_data_directory(

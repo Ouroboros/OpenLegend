@@ -236,6 +236,12 @@ NODISCARD int validate_runtime_configuration(
             configuration.paths.save_directory.detail);
         return 2;
     }
+    if (!configuration.paths.mod.error.empty()) {
+        report_application_error("mod configuration", configuration.paths.mod.error,
+            configuration.paths.mod.path.has_value()
+                ? path_utf8(*configuration.paths.mod.path) : std::string{});
+        return 2;
+    }
     if (configuration.window.status != app::WindowConfigurationStatus::ready) {
         report_application_error(
             "window configuration",
@@ -312,9 +318,15 @@ void log_resolved_configuration(
     diagnostics::log_info(
         "resolved save_directory=" + path_utf8(save_directory) +
         " source=" +
-        (configuration.paths.save_directory.configured
+        (configuration.paths.save_directory.from_mod ? std::string{"mod"}
+             : configuration.paths.save_directory.configured
              ? std::string{"configuration"}
              : std::string{"data_directory"}));
+    diagnostics::log_info(
+        "resolved mod=" +
+        (configuration.paths.mod.path.has_value()
+             ? path_utf8(*configuration.paths.mod.path)
+             : std::string{"builtin"}));
     diagnostics::log_info(
         "display in_game_resolution=" +
         std::to_string(game_resolution.width) + "x" +
@@ -480,6 +492,7 @@ int run_sdl_application(
         loop_settings.last_save_slot = configuration.saves.last_slot;
         loop_settings.configuration_path = configuration_path;
         loop_settings.world_map_keys = configuration.input.world_map_keys;
+        loop_settings.mod_configuration = configuration.paths.mod.path;
         loop_result = run_legacy_runtime_loop(platform, loop_settings);
         if (loop_result.status != 0) {
             return loop_result.status;

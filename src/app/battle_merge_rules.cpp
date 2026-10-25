@@ -1,6 +1,5 @@
 #include "battle_merge_rules.hpp"
 
-#include <cctype>
 #include <cstdint>
 #include <fstream>
 #include <limits>
@@ -10,8 +9,7 @@
 
 #include <toml++/toml.hpp>
 
-#include "openlegend/persistence/asset_fingerprints.hpp"
-#include "openlegend/resource/binary_file.hpp"
+#include "asset_fingerprint_check.hpp"
 
 namespace openlegend::app {
 namespace {
@@ -26,26 +24,6 @@ NODISCARD std::optional<std::int16_t> read_int16(const toml::node* node) {
         return std::nullopt;
     }
     return static_cast<std::int16_t>(*value);
-}
-
-// 核对一条规则的资源指纹：返回空串表示全部相符，否则返回不符的说明。
-NODISCARD std::string check_assets(const toml::table& assets, const std::filesystem::path& data_root) {
-    for (const auto& [key, node] : assets) {
-        const auto file = resource::read_binary_file(data_root / std::string{key.str()});
-        if (!file) {
-            return std::string{key.str()} + ": " + file.error;
-        }
-        const auto actual = persistence::sha256_hex(file.bytes);
-        auto expected = node.value<std::string>().value_or(std::string{});
-        for (auto& character : expected) {
-            character = static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
-        }
-        if (!actual.has_value() || *actual != expected) {
-            return std::string{key.str()} + " SHA-256 mismatch actual=" +
-                actual.value_or(std::string{});
-        }
-    }
-    return {};
 }
 
 }  // namespace
@@ -151,7 +129,7 @@ BattleMergeRulesLoadResult load_battle_merge_rules(
             }
         }
         // 资源与规则编写时不符（脚本或数据被改过）时只停用这一条。
-        if (auto mismatch = check_assets(*assets, data_root); !mismatch.empty()) {
+        if (auto mismatch = check_asset_fingerprints(*assets, data_root); !mismatch.empty()) {
             result.skipped.push_back(
                 "[[merge]] #" + std::to_string(index + 1U) + " assets." + std::move(mismatch));
             continue;

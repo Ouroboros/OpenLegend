@@ -533,12 +533,20 @@ SceneStepResult SceneSession::show_scene_title() {
 }
 
 bool SceneSession::load_scene_sprites() {
-    std::array<char, 7> index_name{};
-    std::array<char, 7> group_name{};
-    static_cast<void>(std::snprintf(index_name.data(), index_name.size(), "SDX%03d", scene_id_));
-    static_cast<void>(std::snprintf(group_name.data(), group_name.size(), "SMP%03d", scene_id_));
-    const auto index = data_root_.read(index_name.data());
-    auto group = data_root_.read(group_name.data());
+    const auto& names = data_root_.asset_names();
+    const auto index_name = names.name(resource::AssetFileKind::scene_sprite_index, scene_id_);
+    const auto group_name = names.name(resource::AssetFileKind::scene_sprite_group, scene_id_);
+    if (!index_name.has_value() || !group_name.has_value()) {
+        error_ = "no scene sprite file name for scene " + std::to_string(scene_id_);
+        return false;
+    }
+    auto index = data_root_.read(*index_name);
+    auto group = data_root_.read(*group_name);
+    // 多个场景共用一份贴图时（部分MOD），索引末尾没有0结束标记，补上后格式与原版相同。
+    if (index && index.bytes.size() >= 4U &&
+        compat::read_u32le(index.bytes, index.bytes.size() - 4U) != 0U) {
+        index.bytes.insert(index.bytes.end(), 4U, std::uint8_t{0U});
+    }
     if (!index) {
         error_ = index.error;
         return false;

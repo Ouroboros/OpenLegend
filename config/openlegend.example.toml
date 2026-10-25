@@ -6,6 +6,12 @@
 # data_dir = './data'
 # save_dir = './save'
 
+# MOD 配置文件；未指定时使用程序内置的原版设定。MOD 配置的 [paths] 可覆盖本节的
+# data_dir、save_dir；两处都未写 save_dir 时，存档默认放在 save/<MOD 配置文件名>
+# （相对可执行文件目录），不同 MOD 的存档自动分开。
+# 格式说明与现有配置见 config/mods/，例如苍龙逐日：
+# mod = './mods/canglongzhuri.toml'
+
 [new_game_plus]
 
 # NG+ 默认关闭。只写 enabled = true 即可启用，其余字段省略时使用下列默认值。

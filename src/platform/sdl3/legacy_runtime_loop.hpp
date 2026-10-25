@@ -31,6 +31,8 @@ struct LegacyRuntimeLoopSettings {
     std::optional<std::uint16_t> last_save_slot{};
     std::filesystem::path configuration_path{};
     std::vector<std::uint8_t> world_map_keys{static_cast<std::uint8_t>('M'), 0x09U};
+    // [paths] mod；未配置时使用程序内置的原版设定。
+    std::optional<std::filesystem::path> mod_configuration{};
 };
 
 struct LegacyRuntimeLoopResult {

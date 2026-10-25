@@ -1,0 +1,128 @@
+# OpenLegend MOD 配置：苍龙逐日
+#
+# 在 openlegend.toml 中指定：
+#   [paths]
+#   mod = './mods/canglongzhuri.toml'
+# 未指定 mod 时使用程序内置的原版设定。
+#
+# 格式（format = 1）：
+#   format  配置格式版本，必须为 1
+#   name    MOD 名称，用于日志
+#   [paths] 可选，覆盖 openlegend.toml 中的同名项；相对路径以可执行文件目录为基准
+#     data_dir  MOD 数据目录（命令行 --data-dir 仍优先）
+#     save_dir  存档目录；MOD 与 openlegend.toml 都未写时默认为 save/<本文件名去掉扩展名>
+#   [files] 可选，按编号打开的资源文件名表；第 n 项为编号 n 的文件名，文件名相对 data_dir。
+#           未列出的表使用原版命名，编号超出所列项数时报错。
+#     scene_sprite_index  场景贴图索引，原版 SDXnnn
+#     scene_sprite_group  场景贴图，原版 SMPnnn
+#     battlefield_index   战场贴图索引，原版 WDXnnn
+#     battlefield_group   战场贴图，原版 WMPnnn
+#     fight_index         战斗动画索引，原版 FIGHTnnn.IDX
+#     fight_group         战斗动画，原版 FIGHTnnn.GRP
+#   出现其他字段时整个配置不生效并报错。
+#
+# [files] 各表取自该 MOD 的 Z.DAT 文件名表（文件偏移 320892 起），游戏运行时不读 Z.DAT。
+
+format = 1
+name = "苍龙逐日"
+
+# 按本机安装位置填写。
+[paths]
+# data_dir = 'E:\Game\canglongzhuri'
+# save_dir = './save/canglongzhuri'
+
+[files]
+
+# 100 项
+scene_sprite_index = [
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+    "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx", "sdx",
+]
+
+# 100 项
+scene_sprite_group = [
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+    "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp", "smp",
+]
+
+# 30 项
+battlefield_index = [
+    "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx",
+    "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx",
+    "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx", "wdx",
+]
+
+# 30 项
+battlefield_group = [
+    "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp",
+    "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp",
+    "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp", "wmp",
+]
+
+# 220 项
+fight_index = [
+    "fdx000", "fdx001", "fdx002", "fdx003", "fdx004", "fdx005", "fdx006", "fdx007", "fdx008", "fdx009",
+    "fdx010", "fdx011", "fdx012", "fdx013", "fdx014", "fdx015", "fdx016", "fdx017", "fdx018", "fdx019",
+    "fdx020", "fdx021", "fdx022", "fdx023", "fdx024", "fdx025", "fdx026", "fdx027", "fdx028", "fdx029",
+    "fdx030", "fdx031", "fdx032", "fdx033", "fdx034", "fdx035", "fdx036", "fdx037", "fdx038", "fdx039",
+    "fdx040", "fdx041", "fdx042", "fdx043", "fdx044", "fdx045", "fdx046", "fdx047", "fdx048", "fdx049",
+    "fdx050", "fdx051", "fdx052", "fdx053", "fdx054", "fdx055", "fdx056", "fdx057", "fdx058", "fdx059",
+    "fdx060", "fdx061", "fdx062", "fdx063", "fdx064", "fdx065", "fdx066", "fdx067", "fdx068", "fdx069",
+    "fdx070", "fdx071", "fdx072", "fdx073", "fdx074", "fdx075", "fdx076", "fdx077", "fdx078", "fdx079",
+    "fdx080", "fdx081", "fdx082", "fdx083", "fdx084", "fdx085", "fdx086", "fdx087", "fdx088", "fdx089",
+    "fdx090", "fdx091", "fdx092", "fdx093", "fdx094", "fdx095", "fdx096", "fdx097", "fdx098", "fdx099",
+    "fdx100", "fdx101", "fdx102", "fdx103", "fdx104", "fdx105", "fdx106", "fdx107", "fdx108", "fdx109",
+    "fdx110", "fdx111", "fdx112", "fdx113", "fdx114", "fdx115", "fdx116", "fdx117", "fdx118", "fdx119",
+    "fdx120", "fdx121", "fdx122", "fdx123", "fdx124", "fdx125", "fdx126", "fdx127", "fdx128", "fdx129",
+    "fdx130", "fdx131", "fdx132", "fdx133", "fdx134", "fdx135", "fdx136", "fdx137", "fdx138", "fdx139",
+    "fdx140", "fdx141", "fdx142", "fdx143", "fdx144", "fdx145", "fdx146", "fdx147", "fdx148", "fdx149",
+    "fdx150", "fdx151", "fdx152", "fdx153", "fdx154", "fdx155", "fdx156", "fdx157", "fdx158", "fdx159",
+    "fdx160", "fdx161", "fdx162", "fdx163", "fdx164", "fdx165", "fdx166", "fdx167", "fdx168", "fdx169",
+    "fdx170", "fdx171", "fdx172", "fdx173", "fdx174", "fdx175", "fdx176", "fdx177", "fdx178", "fdx179",
+    "fdx180", "fdx181", "fdx182", "fdx183", "fdx184", "fdx185", "fdx186", "fdx187", "fdx188", "fdx189",
+    "fdx190", "fdx191", "fdx192", "fdx193", "fdx194", "fdx195", "fdx196", "fdx197", "fdx198", "fdx199",
+    "fdx200", "fdx201", "fdx202", "fdx203", "fdx204", "fdx205", "fdx206", "fdx207", "fdx208", "fdx209",
+    "fdx210", "fdx211", "fdx212", "fdx213", "fdx214", "fdx215", "fdx216", "fdx217", "fdx218", "fdx219",
+]
+
+# 220 项
+fight_group = [
+    "fmp000", "fmp001", "fmp002", "fmp003", "fmp004", "fmp005", "fmp006", "fmp007", "fmp008", "fmp009",
+    "fmp010", "fmp011", "fmp012", "fmp013", "fmp014", "fmp015", "fmp016", "fmp017", "fmp018", "fmp019",
+    "fmp020", "fmp021", "fmp022", "fmp023", "fmp024", "fmp025", "fmp026", "fmp027", "fmp028", "fmp029",
+    "fmp030", "fmp031", "fmp032", "fmp033", "fmp034", "fmp035", "fmp036", "fmp037", "fmp038", "fmp039",
+    "fmp040", "fmp041", "fmp042", "fmp043", "fmp044", "fmp045", "fmp046", "fmp047", "fmp048", "fmp049",
+    "fmp050", "fmp051", "fmp052", "fmp053", "fmp054", "fmp055", "fmp056", "fmp057", "fmp058", "fmp059",
+    "fmp060", "fmp061", "fmp062", "fmp063", "fmp064", "fmp065", "fmp066", "fmp067", "fmp068", "fmp069",
+    "fmp070", "fmp071", "fmp072", "fmp073", "fmp074", "fmp075", "fmp076", "fmp077", "fmp078", "fmp079",
+    "fmp080", "fmp081", "fmp082", "fmp083", "fmp084", "fmp085", "fmp086", "fmp087", "fmp088", "fmp089",
+    "fmp090", "fmp091", "fmp092", "fmp093", "fmp094", "fmp095", "fmp096", "fmp097", "fmp098", "fmp099",
+    "fmp100", "fmp101", "fmp102", "fmp103", "fmp104", "fmp105", "fmp106", "fmp107", "fmp108", "fmp109",
+    "fmp110", "fmp111", "fmp112", "fmp113", "fmp114", "fmp115", "fmp116", "fmp117", "fmp118", "fmp119",
+    "fmp120", "fmp121", "fmp122", "fmp123", "fmp124", "fmp125", "fmp126", "fmp127", "fmp128", "fmp129",
+    "fmp130", "fmp131", "fmp132", "fmp133", "fmp134", "fmp135", "fmp136", "fmp137", "fmp138", "fmp139",
+    "fmp140", "fmp141", "fmp142", "fmp143", "fmp144", "fmp145", "fmp146", "fmp147", "fmp148", "fmp149",
+    "fmp150", "fmp151", "fmp152", "fmp153", "fmp154", "fmp155", "fmp156", "fmp157", "fmp158", "fmp159",
+    "fmp160", "fmp161", "fmp162", "fmp163", "fmp164", "fmp165", "fmp166", "fmp167", "fmp168", "fmp169",
+    "fmp170", "fmp171", "fmp172", "fmp173", "fmp174", "fmp175", "fmp176", "fmp177", "fmp178", "fmp179",
+    "fmp180", "fmp181", "fmp182", "fmp183", "fmp184", "fmp185", "fmp186", "fmp187", "fmp188", "fmp189",
+    "fmp190", "fmp191", "fmp192", "fmp193", "fmp194", "fmp195", "fmp196", "fmp197", "fmp198", "fmp199",
+    "fmp200", "fmp201", "fmp202", "fmp203", "fmp204", "fmp205", "fmp206", "fmp207", "fmp208", "fmp209",
+    "fmp210", "fmp211", "fmp212", "fmp213", "fmp214", "fmp215", "fmp216", "fmp217", "fmp218", "fmp219",
+]

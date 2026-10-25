@@ -26,10 +26,11 @@
 #include "openlegend/text/big5.hpp"
 #include "openlegend/text/game_strings.hpp"
 #include "openlegend/time/legacy_clock.hpp"
-#include "character_status_page.hpp"
 #include "battle_hud.hpp"
 #include "battle_merge_rules.hpp"
+#include "character_status_page.hpp"
 #include "item_list_page.hpp"
+#include "mod_configuration.hpp"
 #include "world_minimap.hpp"
 
 namespace openlegend::app {
@@ -789,6 +790,17 @@ void LegacyGameRuntime::load_battle_merge_rules(const std::filesystem::path& pat
     }
     battle_merge_rules_ =
         std::make_shared<const std::vector<scene::BattleMergeRule>>(std::move(loaded.rules));
+}
+
+std::string LegacyGameRuntime::load_mod_configuration(const std::filesystem::path& path) {
+    auto loaded = app::load_mod_configuration(path);
+    if (!loaded.error.empty()) {
+        return path.string() + ": " + loaded.error;
+    }
+    diagnostics::log_info("mod configuration loaded path=" + path.string() +
+        " name=" + loaded.configuration.name);
+    data_root_.set_asset_names(std::move(loaded.configuration.files));
+    return {};
 }
 
 void LegacyGameRuntime::remember_save_slot(const std::uint16_t slot) {

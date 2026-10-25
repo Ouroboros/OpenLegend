@@ -1,6 +1,7 @@
 add_library(
     openlegend_resource
     STATIC
+        asset_file_names.cpp
         binary_file.cpp
         legacy_assets.cpp
         legacy_sprite.cpp
