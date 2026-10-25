@@ -4,6 +4,51 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
 
 仓库不包含、也不分发原版游戏数据。使用者须自行合法取得原版资源。
 
+## 使用方法
+
+### 准备
+
+1. 准备《金庸群侠传》DOS 版的完整游戏目录（含 `Z.COM`、`Z.DAT`、`RANGER.GRP`、`ALLSIN.GRP` 等原版文件）。
+2. 从 [Releases](https://github.com/Ouroboros/OpenLegend/releases) 下载 `OpenLegend-<版本>-windows-x64.zip`，解压得到三个文件：
+
+   | 文件 | 用途 |
+   |---|---|
+   | `openlegend.exe` | 游戏程序 |
+   | `openlegend.toml` | 设置文件，默认值即可运行 |
+   | `battle_merges.toml` | 合战规则，见下文“合战规则” |
+
+### 指定原版数据目录
+
+二选一：
+
+- **放进原版目录**：把三个文件复制到原版游戏目录，双击 `openlegend.exe`。
+- **单独存放**：三个文件放在任意目录，在 `openlegend.toml` 的 `[paths]` 中写明原版目录：
+
+  ```toml
+  [paths]
+  data_dir = 'D:\Games\金庸群侠传'
+  save_dir = './save'
+  ```
+
+程序按以下顺序确定数据目录：命令行参数 `--data-dir <目录>`、`[paths] data_dir`、启动时的当前目录。`save_dir` 可省略，省略时存档写入数据目录；相对路径以 `openlegend.exe` 所在目录为基准。
+
+### 常用设置
+
+设置都写在 `openlegend.toml` 中，修改后重启游戏生效，完整说明见 [`config/openlegend.example.toml`](config/openlegend.example.toml)。
+
+| 用途 | 写法 |
+|---|---|
+| 开启多周目 | `[new_game_plus]` 下 `enabled = true` |
+| 游戏画面大小 | `[display]` 下 `width`、`height` |
+| 窗口大小 | `[window]` 下 `width`、`height`、`maximized` |
+| 系统输入法输入姓名 | `[input]` 下 `name_entry = "modern"` |
+| 恢复原版逐格移动 | `[input]` 下 `smooth_movement = false` |
+| 世界地图按键 | `[input]` 下 `world_map_keys` |
+
+### 日志
+
+每次启动在 `openlegend.exe` 旁的 `logs\` 目录生成一个日志文件。启动失败或出错时，提示信息和日志会写明原因。
+
 ## 功能
 
 ### 与原版的关系
