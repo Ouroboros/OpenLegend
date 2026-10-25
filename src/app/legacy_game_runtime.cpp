@@ -143,6 +143,44 @@ NODISCARD std::string local_save_time(const std::string& timestamp_utc) {
     return buffer.data();
 }
 
+// 基线快照导入失败时定位是哪一步没有通过，写入日志。
+NODISCARD std::string baseline_import_failure_stage(
+    const model::GameSnapshot& snapshot, const model::NewGamePlusConfiguration& configuration,
+    const model::RangerState* const baseline) {
+    if (!snapshot.ranger.valid()) {
+        return "ranger record counts";
+    }
+    if (!static_cast<const model::SceneArchives&>(snapshot).valid()) {
+        return "scene archives";
+    }
+    auto ranger = model::decode_legacy_ranger(snapshot.ranger);
+    if (!ranger.has_value()) {
+        for (std::size_t index = 0U; index < snapshot.ranger.roles.size(); ++index) {
+            if (!model::decode_legacy_role(snapshot.ranger.roles[index]).has_value()) {
+                return "role decode id=" + std::to_string(index);
+            }
+        }
+        return "ranger decode";
+    }
+    if (!ranger->valid()) {
+        return "runtime ranger names";
+    }
+    if (baseline != nullptr && !ranger->matches_legacy_definitions(*baseline)) {
+        return "baseline definitions";
+    }
+    model::RuntimeGameSnapshot runtime;
+    runtime.configuration = configuration;
+    runtime.ranger = std::move(*ranger);
+    static_cast<model::SceneArchives&>(runtime) = static_cast<const model::SceneArchives&>(snapshot);
+    if (!runtime.valid()) {
+        return "runtime snapshot";
+    }
+    if (!runtime.valid_for_persistence()) {
+        return "persistent values";
+    }
+    return "unknown";
+}
+
 template<class Ranger>
 NODISCARD text::GameText save_location(const Ranger& ranger) {
     const auto world_x = ranger.header.word(model::header_word::main_map_x);
@@ -2735,9 +2773,13 @@ void LegacyGameRuntime::begin_new_game() {
             LegacyGameView::title);
         return;
     }
+    const auto baseline_snapshot = *loaded.snapshot;
     if (!game_state_.import_snapshot(
             std::move(*loaded.snapshot), new_game_plus_configuration_,
             new_game_plus_configuration_.enabled ? &startup_resources_.ranger() : nullptr)) {
+        diagnostics::log_error("baseline snapshot import failed stage=" +
+            baseline_import_failure_stage(baseline_snapshot, new_game_plus_configuration_,
+                new_game_plus_configuration_.enabled ? &startup_resources_.ranger() : nullptr));
         show_error("Baseline snapshot import failed", LegacyGameView::title);
         return;
     }

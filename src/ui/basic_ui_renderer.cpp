@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <vector>
 
 #include "openlegend/input/name_input_method.hpp"
 #include "openlegend/model/new_game.hpp"
@@ -516,11 +517,35 @@ bool BasicUiRenderer::render_death_menu(
 bool BasicUiRenderer::render_error(
     const std::span<const std::uint8_t> legacy_message,
     render::IndexedFramebuffer& framebuffer) {
-    if (!draw_box(framebuffer, 20, 150, 280U, 31U)) {
+    // 按提示框宽度（34个半角字宽）换行，不拆开双字节字；行数多时提示框向上增高。
+    constexpr std::size_t kLineUnits = 34U;
+    std::vector<std::span<const std::uint8_t>> lines;
+    std::size_t begin = 0U;
+    std::size_t units = 0U;
+    for (std::size_t index = 0U; index < legacy_message.size();) {
+        const auto width = legacy_message[index] >= 0x80U && index + 1U < legacy_message.size()
+            ? std::size_t{2U} : std::size_t{1U};
+        if (units + width > kLineUnits) {
+            lines.push_back(legacy_message.subspan(begin, index - begin));
+            begin = index;
+            units = 0U;
+        }
+        units += width;
+        index += width;
+    }
+    lines.push_back(legacy_message.subspan(begin));
+    const auto extra = static_cast<int>(lines.size()) - 1;
+    const auto top = std::max(0, 150 - 16 * extra);
+    if (!draw_box(framebuffer, 20, top, 280U, static_cast<std::uint16_t>(31 + 16 * extra))) {
         return false;
     }
-    return draw_text_big5(
-        framebuffer, 24, 157, text::Big5TextView{legacy_message}, text_colors::notice);
+    for (std::size_t line = 0U; line < lines.size(); ++line) {
+        if (!draw_text_big5(framebuffer, 24, top + 7 + 16 * static_cast<int>(line),
+                text::Big5TextView{lines[line]}, text_colors::notice)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool BasicUiRenderer::draw_text_utf8(

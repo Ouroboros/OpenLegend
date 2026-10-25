@@ -38,6 +38,7 @@ inline constexpr std::array<std::pair<std::int16_t, std::int16_t>, 5> kWeiXiaoba
 // 初见对话脚本只挂在河洛客栈的事件上，对话后改挂商店脚本。
 inline constexpr std::int16_t kWeiXiaobaoGreetingScript = 937;
 inline constexpr std::int16_t kWeiXiaobaoShopScript = 938;
+// 原版对话与脚本条数；实际条数由TALK、KDEF数据决定。
 inline constexpr std::size_t kTalkCount = 2'977U;
 inline constexpr std::size_t kEventScriptCount = 1'018U;
 

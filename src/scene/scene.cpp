@@ -285,10 +285,11 @@ SceneAssets::SceneAssets(const resource::DataRoot& data_root)
         error_ = talks_.error();
     } else if (!scripts_.valid()) {
         error_ = scripts_.error();
-    } else if (talks_.entry_count() != kTalkCount) {
-        error_ = "TALK archive does not contain 2977 records";
-    } else if (scripts_.entry_count() != kEventScriptCount) {
-        error_ = "KDEF archive does not contain 1018 scripts";
+    } else if (talks_.entry_count() == 0U) {
+        // 对话与脚本条数以数据为准（原版为kTalkCount、kEventScriptCount，MOD可能更多）。
+        error_ = "TALK archive is empty";
+    } else if (scripts_.entry_count() == 0U) {
+        error_ = "KDEF archive is empty";
     }
 }
 

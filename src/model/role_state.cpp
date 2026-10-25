@@ -216,7 +216,9 @@ std::optional<RoleState> decode_legacy_role(const RoleRecord& record) {
     }
     for (std::size_t index = 0U; index < state.taking_items.size(); ++index) {
         state.taking_items[index] = ItemId{record.word(role_word::taking_item_begin + index)};
-        state.taking_counts[index] = record.word(role_word::taking_item_count_begin + index);
+        // 空携带槽的数量无意义，按0读入（部分MOD数据空槽仍留有数量）。
+        state.taking_counts[index] = state.taking_items[index].value == -1
+            ? 0 : record.word(role_word::taking_item_count_begin + index);
     }
     state.no_magic_count.clear();
     return state;
