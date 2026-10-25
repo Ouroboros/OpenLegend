@@ -1,0 +1,132 @@
+# OpenLegend MOD 配置：金庸群侠传（原版）
+#
+# 在 openlegend.toml 中指定：
+#   [paths]
+#   mod = './mods/original.toml'
+# 未指定 mod 时使用程序内置的原版设定，不开启多周目（NG+）。
+#
+# 格式（format = 1）：
+#   format  配置格式版本，必须为 1
+#   name    MOD 名称，用于日志
+#   [paths] 可选，相对路径以可执行文件目录为基准
+#     data_dir  数据目录；未写时为启动时的当前目录
+#     save_dir  存档目录；未写时为 save/<本文件名去掉扩展名>
+#   [new_game_plus] 可选，多周目设置，字段说明见 config/mods/original.toml；未写时不开启
+#   [saves]   程序自动写入，记住上次使用的存档槽（last_slot），不需要手写
+#   [[merge]] 可选，合战规则，字段说明见 config/mods/original.toml
+#   [files] 可选，按编号打开的资源文件名表；第 n 项为编号 n 的文件名，文件名相对 data_dir。
+#           未列出的表使用原版命名，编号超出所列项数时报错。
+#     scene_sprite_index  场景贴图索引，原版 SDXnnn
+#     scene_sprite_group  场景贴图，原版 SMPnnn
+#     battlefield_index   战场贴图索引，原版 WDXnnn
+#     battlefield_group   战场贴图，原版 WMPnnn
+#     fight_index         战斗动画索引，原版 FIGHTnnn.IDX
+#     fight_group         战斗动画，原版 FIGHTnnn.GRP
+#   出现其他字段时整个配置不生效并报错。
+#
+# 原版数据使用程序内置的文件名，不需要 [files]。
+
+format = 1
+name = "金庸群侠传（原版）"
+
+# 按本机安装位置填写。
+[paths]
+# data_dir = './data'
+# save_dir = './save'
+
+[new_game_plus]
+
+# NG+ 默认关闭。只写 enabled = true 即可启用，其余字段省略时使用下列默认值。
+# 修改后重启游戏。
+# 开启后从第一周目起保存为 TOML，通关后可保存通关进度，并在标题选择 New Game+。
+# 关闭时使用原版存档流程，不读取 NG+ TOML 存档。
+
+enabled = false
+
+# 最大允许周目序号，第一周目为 1；默认允许到第 999 周目。
+# 这是周目数量限制，不是人物等级或武功等级上限。
+maximum_playthroughs = 999
+
+# 内伤上限固定为 99，不随周目变化；受伤后的内伤增量按目标最大生命与最大内力计算。
+# 旧版 hurt_cap_step 已取消，写入该键会导致配置加载失败。
+
+# 敌方属性按原始资产基准值 + (当前周目 - 1) * 对应 STEP 计算。
+# 以下字段名虽然包含 cap，但不会按周目限制我方永久属性，
+# 也不会在继承时自动给我方增加属性。生命／内力 STEP 增加的是最大值。
+# 敌方最大生命／内力增加时，当前值增加同样的量，保留原始基准中当前值与最大值的差额。
+
+# 敌方最大生命每周目增加量。
+hp_cap_step = 999
+# 敌方最大内力每周目增加量。
+mp_cap_step = 999
+# 敌方攻击每周目增加量。
+attack_cap_step = 100
+# 敌方防御每周目增加量。
+defence_cap_step = 100
+# 敌方用毒能力每周目增加量。
+use_poison_cap_step = 100
+# 敌方抗毒能力每周目增加量。
+anti_poison_cap_step = 100
+# 敌方暗器能力每周目增加量。
+hidden_weapon_cap_step = 100
+# 敌方人物等级每周目增加量；不限制我方可练到的等级。
+role_level_step = 30
+
+# 敌方已学武功每周目增加的等级单位，每单位对应 100 点熟练度。
+# 默认每周目在原始熟练度基础上累加 1000 点；不创建新武功，不限制我方武功等级。
+martial_level_step = 10
+
+# 战斗经验按百分比计算：第一周目固定为 100%，第二周目使用此值。
+battle_experience_percent_ng2 = 150
+# 从第三周目起，每周目增加的经验倍率百分点。
+# 默认第二／三／四周目分别为 150%／250%／350%，不是每次乘以 100%。
+battle_experience_percent_step = 100
+
+# 完整规则见 docs/new-game-plus-design.zh-Hans.html 及其引用的字段页。
+
+# 合战规则：剧情开战 battle 时，若条件成立，先依次播放 dialogues，再把 merge_battle 的敌方
+# 并入本战（放进空余的敌方槽位，就近另找可站立的格子），整场经验相加；槽位或站位
+# 不够时本场按原版进行。按顺序取第一条匹配的规则。
+#
+# [[merge]] 字段：
+#   battle             触发的战斗编号（WAR.STA）
+#   merge_battle       要并入敌方的战斗编号
+#   new_game_plus_only 只在 NG+ 开启时生效，默认 true
+#   role               检查道德的角色编号，默认 0（主角）
+#   morality_min       道德下限（含），默认 0
+#   morality_max       道德上限（含），默认 100
+#   dialogues          开战前插播的对白，每项为 [对白编号, 头像编号, 样式]
+#                      样式 0 为对方说话、1 为主角说话；可省略
+#
+# [merge.assets] 紧跟在所属 [[merge]] 之后，列出这条规则所依赖的资源文件（相对数据目录）
+# 及其 SHA-256，必填。启动时逐个核对，任一文件不存在或不符时只停用这一条（日志记录
+# 实际值），以免套用到改过的脚本或数据；其余规则照常生效。
+
+# 最终战：主角道德为 0 时，十大善人（134）与十大恶人（133）一同出战。
+# 开战前插播原版恶人分支的对白（KDEF 脚本 1015 中的原句）。
+[[merge]]
+battle = 134
+merge_battle = 133
+new_game_plus_only = true
+role = 0
+morality_min = 0
+morality_max = 0
+dialogues = [
+    [2919, 67, 0],
+    [2920, 71, 0],
+    [2921, 0, 1],
+    [2922, 22, 0],
+    [2923, 0, 1],
+    [2924, 19, 0],
+    [2925, 51, 0],
+    [2926, 62, 0],
+]
+
+# 依赖：剧情脚本（开战位置与原版道德分支）、对白（插播对白编号）、战斗定义（双方敌人与
+# 经验）。战场地图不列入：站位在运行时就近查找，找不到时退回原版战斗。
+[merge.assets]
+"KDEF.IDX" = "bf02eccf1dab01fd0ae033cdf807f56b978a71a6c2ab9be05e366239b485104b"
+"KDEF.GRP" = "135c5e097a7fe561ee931046e1bebf55de9b469678e3d111d8e9f2c6bb600e06"
+"TALK.IDX" = "ac0cd18601ca1eb8aae2b0e2203c0082bcc14353ee66bfb6bc98e4e79ce92495"
+"TALK.GRP" = "5cde11862ed7a52ffd45920e8f19ff21a5065bfe4c02036c524a504a5cb91811"
+"WAR.STA" = "98e3f66912c5ba4a0be00aaeff3462eb8c99f4d591d92a754930070dde9649b6"

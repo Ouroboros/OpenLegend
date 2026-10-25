@@ -5,6 +5,8 @@
 #include <optional>
 #include <string>
 
+#include <toml++/toml.hpp>
+
 #include "openlegend/attributes.hpp"
 #include "openlegend/resource/asset_file_names.hpp"
 
@@ -20,6 +22,12 @@ struct ModConfiguration {
     // [paths]：覆盖openlegend.toml的data_dir、save_dir；相对路径以可执行文件目录为基准。
     std::optional<std::string> data_directory;
     std::optional<std::string> save_directory;
+    // [new_game_plus]：NG+设置，字段与取值由NG+配置统一校验；未写时不开启NG+。
+    std::optional<toml::table> new_game_plus;
+    // [saves] last_slot：程序记忆的上次存档槽；取值无效时当作没有记忆。
+    std::optional<std::uint16_t> last_save_slot;
+    // [[merge]]：合战规则，由parse_battle_merge_rules按数据目录核对资源后生效。
+    std::optional<toml::array> merges;
     // [files]：按编号打开的资源文件名表；未列出的类别使用原版命名。
     resource::AssetFileNames files;
 };

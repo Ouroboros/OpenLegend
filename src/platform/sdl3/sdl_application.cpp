@@ -236,6 +236,10 @@ NODISCARD int validate_runtime_configuration(
             configuration.paths.save_directory.detail);
         return 2;
     }
+    if (!configuration.saves.error.empty()) {
+        report_application_error("saves configuration", configuration.saves.error);
+        return 2;
+    }
     if (!configuration.paths.mod.error.empty()) {
         report_application_error("mod configuration", configuration.paths.mod.error,
             configuration.paths.mod.path.has_value()
@@ -466,6 +470,9 @@ int run_sdl_application(
             report_application_error(
                 "SDL3 platform", "initialization failed", SDL_GetError());
             return 4;
+        }
+        if (!configuration.paths.mod.name.empty()) {
+            platform.set_window_title(configuration.paths.mod.name);
         }
         diagnostics::log_info(
             "SDL3 platform ready window=" +

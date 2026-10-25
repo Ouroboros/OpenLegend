@@ -3,14 +3,17 @@
 # 在 openlegend.toml 中指定：
 #   [paths]
 #   mod = './mods/canglongzhuri.toml'
-# 未指定 mod 时使用程序内置的原版设定。
+# 未指定 mod 时使用程序内置的原版设定，不开启多周目（NG+）。
 #
 # 格式（format = 1）：
 #   format  配置格式版本，必须为 1
 #   name    MOD 名称，用于日志
-#   [paths] 可选，覆盖 openlegend.toml 中的同名项；相对路径以可执行文件目录为基准
-#     data_dir  MOD 数据目录（命令行 --data-dir 仍优先）
-#     save_dir  存档目录；MOD 与 openlegend.toml 都未写时默认为 save/<本文件名去掉扩展名>
+#   [paths] 可选，相对路径以可执行文件目录为基准
+#     data_dir  数据目录；未写时为启动时的当前目录
+#     save_dir  存档目录；未写时为 save/<本文件名去掉扩展名>
+#   [new_game_plus] 可选，多周目设置，字段说明见 config/mods/original.toml；未写时不开启
+#   [saves]   程序自动写入，记住上次使用的存档槽（last_slot），不需要手写
+#   [[merge]] 可选，合战规则，字段说明见 config/mods/original.toml
 #   [files] 可选，按编号打开的资源文件名表；第 n 项为编号 n 的文件名，文件名相对 data_dir。
 #           未列出的表使用原版命名，编号超出所列项数时报错。
 #     scene_sprite_index  场景贴图索引，原版 SDXnnn
@@ -30,6 +33,10 @@ name = "苍龙逐日"
 [paths]
 # data_dir = 'E:\Game\canglongzhuri'
 # save_dir = './save/canglongzhuri'
+
+# 多周目设置，字段说明见 config/mods/original.toml。
+[new_game_plus]
+enabled = false
 
 [files]
 

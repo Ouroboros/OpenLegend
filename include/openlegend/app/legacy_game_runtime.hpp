@@ -204,10 +204,7 @@ public:
     void set_save_slot_memory(
         std::optional<std::uint16_t> last_slot, std::filesystem::path configuration_path);
 
-    // 读取合战规则文件；文件不存在时无规则，出错时记录日志且规则不生效。
-    void load_battle_merge_rules(const std::filesystem::path& path);
-
-    // 读取[paths] mod指定的MOD配置；成功返回空串，否则返回原因。
+    // 读取[paths] mod指定的MOD配置（文件名表、合战规则）；成功返回空串，否则返回原因。
     NODISCARD std::string load_mod_configuration(const std::filesystem::path& path);
 
     NODISCARD bool weather_presentation_active() const noexcept;

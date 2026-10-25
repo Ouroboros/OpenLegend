@@ -775,30 +775,28 @@ void LegacyGameRuntime::set_save_slot_memory(
     save_slot_configuration_path_ = std::move(configuration_path);
 }
 
-void LegacyGameRuntime::load_battle_merge_rules(const std::filesystem::path& path) {
-    auto loaded = app::load_battle_merge_rules(path, data_root_path_);
-    for (const auto& skipped : loaded.skipped) {
-        diagnostics::log_warning("battle merge rule disabled path=" + path.string() +
-            " reason=" + skipped);
-    }
-    if (!loaded.error.empty()) {
-        diagnostics::log_error("battle merge rules ignored path=" + path.string() +
-            " reason=" + loaded.error);
-    } else {
-        diagnostics::log_info("battle merge rules loaded path=" + path.string() +
-            " count=" + std::to_string(loaded.rules.size()));
-    }
-    battle_merge_rules_ =
-        std::make_shared<const std::vector<scene::BattleMergeRule>>(std::move(loaded.rules));
-}
-
 std::string LegacyGameRuntime::load_mod_configuration(const std::filesystem::path& path) {
     auto loaded = app::load_mod_configuration(path);
     if (!loaded.error.empty()) {
         return path.string() + ": " + loaded.error;
     }
+    std::vector<scene::BattleMergeRule> rules;
+    if (loaded.configuration.merges.has_value()) {
+        auto merges = app::parse_battle_merge_rules(*loaded.configuration.merges, data_root_path_);
+        if (!merges.error.empty()) {
+            return path.string() + ": " + merges.error;
+        }
+        for (const auto& skipped : merges.skipped) {
+            diagnostics::log_warning("battle merge rule disabled path=" + path.string() +
+                " reason=" + skipped);
+        }
+        rules = std::move(merges.rules);
+    }
     diagnostics::log_info("mod configuration loaded path=" + path.string() +
-        " name=" + loaded.configuration.name);
+        " name=" + loaded.configuration.name +
+        " battle_merges=" + std::to_string(rules.size()));
+    battle_merge_rules_ =
+        std::make_shared<const std::vector<scene::BattleMergeRule>>(std::move(rules));
     data_root_.set_asset_names(std::move(loaded.configuration.files));
     return {};
 }

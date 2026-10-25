@@ -19,6 +19,7 @@
 #include <fstream>
 #include <limits>
 #include <optional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -160,51 +161,19 @@ NODISCARD DirectoryCandidate configuration_candidate(
         executable_directory);
 }
 
-NODISCARD SaveDirectoryConfigurationLoadResult save_directory_configuration_from_document(
-    const toml::table& document,
-    const std::filesystem::path& executable_directory) {
-    SaveDirectoryConfigurationLoadResult result;
-    const toml::node* paths_node =
-        document.get(PathsConfigurationLoadResult::toml_table_name);
-    if (paths_node == nullptr) {
-        return result;
-    }
-    const toml::table* paths = paths_node->as_table();
-    if (paths == nullptr) {
-        result.status = SaveDirectoryConfigurationStatus::invalid_paths_table;
-        return result;
-    }
-    const toml::node* save_directory_node =
-        paths->get(PathsConfigurationLoadResult::save_directory_toml_key);
-    if (save_directory_node == nullptr) {
-        return result;
-    }
-    const auto value = save_directory_node->value<std::string>();
-    if (!value.has_value() || value->empty()) {
-        result.status = SaveDirectoryConfigurationStatus::invalid_save_directory;
-        return result;
-    }
-    auto directory = path_from_utf8(*value);
-    if (directory.is_relative()) {
-        directory = executable_directory / directory;
-    }
-    std::error_code error;
-    directory = std::filesystem::absolute(directory, error).lexically_normal();
-    if (error) {
-        result.status = SaveDirectoryConfigurationStatus::directory_query_failed;
-        result.detail = error.message();
-        return result;
-    }
-    result.directory = std::move(directory);
-    result.configured = true;
-    return result;
-}
-
 NODISCARD ModPathConfigurationLoadResult mod_path_configuration_from_document(
     const toml::table& document,
     const std::filesystem::path& executable_directory) {
     ModPathConfigurationLoadResult result;
     const auto* paths = document.get_as<toml::table>(PathsConfigurationLoadResult::toml_table_name);
+    // openlegend.toml只指定使用哪个MOD；数据与存档目录写在MOD配置的[paths]中。
+    if (paths != nullptr &&
+        (paths->get(PathsConfigurationLoadResult::data_directory_toml_key) != nullptr ||
+         paths->get(PathsConfigurationLoadResult::save_directory_toml_key) != nullptr)) {
+        result.error = "[paths] data_dir and save_dir belong in the MOD configuration "
+                       "([paths] mod), not in openlegend.toml";
+        return result;
+    }
     const auto* node = paths != nullptr
         ? paths->get(PathsConfigurationLoadResult::mod_toml_key) : nullptr;
     if (node == nullptr) {
@@ -372,12 +341,6 @@ NODISCARD std::span<const std::string_view> configuration_key_order(
     }
     if (table_path.front() == DisplayConfigurationLoadResult::toml_table_name) {
         return DisplayConfigurationLoadResult::toml_field_order;
-    }
-    if (table_path.front() == SavesConfigurationLoadResult::toml_table_name) {
-        return SavesConfigurationLoadResult::toml_field_order;
-    }
-    if (table_path.front() == NewGamePlusConfigurationLoadResult::toml_table_name) {
-        return NewGamePlusConfigurationLoadResult::toml_field_order;
     }
     return {};
 }
@@ -911,6 +874,8 @@ std::string_view data_directory_status_message(const DataDirectoryStatus status)
         return "--data-dir requires a directory";
     case DataDirectoryStatus::empty_command_line_value:
         return "--data-dir cannot be empty";
+    case DataDirectoryStatus::command_line_not_supported:
+        return "--data-dir is no longer supported; set data_dir in the MOD configuration";
     case DataDirectoryStatus::configuration_read_failed:
         return "cannot read openlegend.toml";
     case DataDirectoryStatus::configuration_parse_failed:
@@ -960,58 +925,80 @@ WindowConfigurationLoadResult load_window_configuration(
     return window_configuration_from_document(document.values, fallback);
 }
 
-NODISCARD SavesConfigurationLoadResult saves_configuration_from_document(
-    const toml::table& document) {
-    SavesConfigurationLoadResult result;
-    const toml::node* saves_node =
-        document.get(SavesConfigurationLoadResult::toml_table_name);
-    if (saves_node == nullptr) {
-        return result;
-    }
-    const toml::table* saves = saves_node->as_table();
-    if (saves == nullptr) {
-        return result;
-    }
-    // 记忆性数据宽松处理：类型或范围不对时当作没有记忆，不影响配置加载。
-    const auto slot =
-        (*saves)[SavesConfigurationLoadResult::last_slot_toml_key].value<std::int64_t>();
-    if (slot.has_value() && *slot >= 0 &&
-        *slot < static_cast<std::int64_t>(persistence::kNumberedSaveSlotCount)) {
-        result.last_slot = static_cast<std::uint16_t>(*slot);
-    }
-    return result;
-}
-
 bool save_last_save_slot(
     const std::filesystem::path& configuration_path,
     const std::uint16_t slot,
     std::string& detail) {
+    // 只改写[saves]中的last_slot一行，文件其余内容（注释、格式）原样保留。
     detail.clear();
-    auto loaded_document = read_configuration_document(configuration_path);
-    if (loaded_document.status != ConfigurationDocumentStatus::ready) {
-        detail = loaded_document.detail.empty()
-            ? configuration_path.string()
-            : std::move(loaded_document.detail);
+    std::ifstream input{configuration_path, std::ios::binary};
+    if (!input) {
+        detail = configuration_path.string();
         return false;
     }
-    auto document = std::move(loaded_document.values);
-    toml::table* saves =
-        document[SavesConfigurationLoadResult::toml_table_name].as_table();
-    if (saves == nullptr) {
-        document.insert_or_assign(
-            SavesConfigurationLoadResult::toml_table_name, toml::table{});
-        saves = document[SavesConfigurationLoadResult::toml_table_name].as_table();
+    std::vector<std::string> lines;
+    for (std::string line; std::getline(input, line);) {
+        lines.push_back(std::move(line));
     }
-    saves->insert_or_assign(
-        SavesConfigurationLoadResult::last_slot_toml_key,
-        static_cast<std::int64_t>(slot));
-
+    input.close();
+    const auto trimmed = [](std::string_view text) {
+        const auto begin = text.find_first_not_of(" \t\r");
+        const auto end = text.find_last_not_of(" \t\r");
+        return begin == std::string_view::npos
+            ? std::string_view{} : text.substr(begin, end - begin + 1U);
+    };
+    const auto table_name = [&trimmed](const std::string_view line) -> std::optional<std::string_view> {
+        auto text = trimmed(line.substr(0U, line.find('#')));
+        if (text.size() < 2U || text.front() != '[' || text.back() != ']' ||
+            text.starts_with("[[")) {
+            return std::nullopt;
+        }
+        return trimmed(text.substr(1U, text.size() - 2U));
+    };
+    const auto value_line = std::string{SavesConfigurationLoadResult::last_slot_toml_key} +
+        " = " + std::to_string(slot);
+    std::optional<std::size_t> section;
+    std::optional<std::size_t> section_end;
+    std::optional<std::size_t> existing;
+    for (std::size_t index = 0U; index < lines.size(); ++index) {
+        if (const auto name = table_name(lines[index])) {
+            if (section.has_value() && !section_end.has_value()) {
+                section_end = index;
+            }
+            if (*name == SavesConfigurationLoadResult::toml_table_name) {
+                section = index;
+            }
+            continue;
+        }
+        const auto text = trimmed(lines[index]);
+        if (section.has_value() && !section_end.has_value() &&
+            text.starts_with(SavesConfigurationLoadResult::last_slot_toml_key)) {
+            const auto rest = trimmed(text.substr(
+                SavesConfigurationLoadResult::last_slot_toml_key.size()));
+            if (rest.starts_with('=')) {
+                existing = index;
+            }
+        }
+    }
+    if (existing.has_value()) {
+        lines[*existing] = value_line;
+    } else if (section.has_value()) {
+        lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(*section + 1U), value_line);
+    } else {
+        if (!lines.empty() && !trimmed(lines.back()).empty()) {
+            lines.emplace_back();
+        }
+        lines.push_back("[" + std::string{SavesConfigurationLoadResult::toml_table_name} + "]");
+        lines.push_back(value_line);
+    }
     std::ofstream output{configuration_path, std::ios::binary | std::ios::trunc};
     if (!output) {
         detail = configuration_path.string();
         return false;
     }
-    write_configuration_document(output, document);
+    for (const auto& line : lines) {
+        output << line << '\n';
+    }
     if (!output) {
         detail = configuration_path.string();
         return false;
@@ -1136,6 +1123,23 @@ NewGamePlusConfigurationLoadResult load_new_game_plus_configuration(
     return detail::new_game_plus_configuration_from_document(document.values);
 }
 
+// NG+设置只来自MOD配置的[new_game_plus]；未指定MOD或MOD中没有时使用默认值（不开启）。
+NODISCARD NewGamePlusConfigurationLoadResult new_game_plus_configuration_from_mod(
+    const toml::table& document, const std::optional<ModConfiguration>& mod) {
+    const auto key = NewGamePlusConfigurationLoadResult::toml_table_name;
+    if (document.get(key) != nullptr) {
+        NewGamePlusConfigurationLoadResult result;
+        result.status = NewGamePlusConfigurationStatus::moved_to_mod_configuration;
+        return result;
+    }
+    if (!mod.has_value() || !mod->new_game_plus.has_value()) {
+        return {};
+    }
+    toml::table wrapper;
+    wrapper.insert(key, *mod->new_game_plus);
+    return detail::new_game_plus_configuration_from_document(wrapper);
+}
+
 RuntimeConfiguration load_runtime_configuration(
     const std::span<const std::string_view> arguments,
     const std::filesystem::path& configuration_path,
@@ -1145,38 +1149,47 @@ RuntimeConfiguration load_runtime_configuration(
     const auto document = read_configuration_document(configuration_path);
 
     RuntimeConfiguration configuration;
-    // MOD配置的[paths]覆盖openlegend.toml的data_dir、save_dir（命令行--data-dir仍优先）。
+    // openlegend.toml只指定MOD；数据与存档目录取自MOD配置的[paths]。
     std::optional<ModConfiguration> mod;
     if (document.status == ConfigurationDocumentStatus::ready) {
         configuration.paths.mod = mod_path_configuration_from_document(
             document.values, executable_directory);
-        if (configuration.paths.mod.path.has_value()) {
+        if (configuration.paths.mod.error.empty() && configuration.paths.mod.path.has_value()) {
             auto loaded = load_mod_configuration(*configuration.paths.mod.path);
             if (!loaded.error.empty()) {
                 configuration.paths.mod.error = std::move(loaded.error);
             } else {
+                configuration.paths.mod.name = loaded.configuration.name;
                 mod = std::move(loaded.configuration);
             }
         }
     }
-    auto data_directory_candidate = command_line_candidate(arguments, launch_directory);
-    if (data_directory_candidate.status == DataDirectoryStatus::ready &&
-        data_directory_candidate.source != DataDirectorySource::command_line) {
-        data_directory_candidate = mod.has_value() && mod->data_directory.has_value()
-            ? candidate_for_path(DataDirectorySource::mod_configuration,
-                  path_from_utf8(*mod->data_directory), executable_directory)
-            : configuration_candidate(document, executable_directory, launch_directory);
+    const bool data_directory_argument = std::ranges::any_of(
+        arguments, [](const std::string_view argument) {
+            return argument == kDataDirectoryOption ||
+                argument.starts_with(kDataDirectoryOptionPrefix);
+        });
+    DirectoryCandidate data_directory_candidate;
+    if (data_directory_argument) {
+        data_directory_candidate = candidate_error(
+            DataDirectoryStatus::command_line_not_supported, DataDirectorySource::command_line);
+    } else if (document.status != ConfigurationDocumentStatus::ready) {
+        data_directory_candidate =
+            configuration_candidate(document, executable_directory, launch_directory);
+    } else if (mod.has_value() && mod->data_directory.has_value()) {
+        data_directory_candidate = candidate_for_path(DataDirectorySource::mod_configuration,
+            path_from_utf8(*mod->data_directory), executable_directory);
+    } else {
+        data_directory_candidate = candidate_for_path(
+            DataDirectorySource::launch_directory, launch_directory, launch_directory);
     }
     configuration.paths.data_directory =
         validate_candidate(std::move(data_directory_candidate));
 
     if (document.status == ConfigurationDocumentStatus::ready) {
-        configuration.paths.save_directory = save_directory_configuration_from_document(
-            document.values, executable_directory);
+        // 存档目录：MOD的save_dir；未写时为save/<MOD配置文件名>；未指定MOD时存于数据目录。
         auto& save_directory = configuration.paths.save_directory;
-        if (save_directory.status == SaveDirectoryConfigurationStatus::ready &&
-            configuration.paths.mod.path.has_value() &&
-            ((mod.has_value() && mod->save_directory.has_value()) || !save_directory.configured)) {
+        if (mod.has_value()) {
             auto directory = mod.has_value() && mod->save_directory.has_value()
                 ? path_from_utf8(*mod->save_directory)
                 : std::filesystem::path{"save"} / configuration.paths.mod.path->stem();
@@ -1210,9 +1223,14 @@ RuntimeConfiguration load_runtime_configuration(
             document.values, defaults.fade_frame_delay);
         configuration.window =
             window_configuration_from_document(document.values, defaults.window_size);
-        configuration.saves = saves_configuration_from_document(document.values);
+        if (document.values.get(SavesConfigurationLoadResult::toml_table_name) != nullptr) {
+            configuration.saves.error =
+                "[saves] belongs in the MOD configuration ([paths] mod), not in openlegend.toml";
+        } else if (mod.has_value()) {
+            configuration.saves.last_slot = mod->last_save_slot;
+        }
         configuration.new_game_plus =
-            detail::new_game_plus_configuration_from_document(document.values);
+            new_game_plus_configuration_from_mod(document.values, mod);
         return configuration;
     }
 

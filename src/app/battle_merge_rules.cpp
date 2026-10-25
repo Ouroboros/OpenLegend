@@ -1,11 +1,9 @@
 #include "battle_merge_rules.hpp"
 
 #include <cstdint>
-#include <fstream>
 #include <limits>
 #include <optional>
 #include <string_view>
-#include <system_error>
 
 #include <toml++/toml.hpp>
 
@@ -28,29 +26,10 @@ NODISCARD std::optional<std::int16_t> read_int16(const toml::node* node) {
 
 }  // namespace
 
-BattleMergeRulesLoadResult load_battle_merge_rules(
-    const std::filesystem::path& path, const std::filesystem::path& data_root) {
+BattleMergeRulesLoadResult parse_battle_merge_rules(
+    const toml::array& merge_tables, const std::filesystem::path& data_root) {
     BattleMergeRulesLoadResult result;
-    std::error_code error;
-    if (!std::filesystem::exists(path, error)) {
-        return result;
-    }
-    std::ifstream input{path, std::ios::binary};
-    if (!input) {
-        result.error = "unable to read " + path.string();
-        return result;
-    }
-    toml::table document;
-    try {
-        document = toml::parse(input, path.string());
-    } catch (const toml::parse_error& parse_error) {
-        result.error = std::string{parse_error.description()};
-        return result;
-    }
-    const auto* merges = document.get_as<toml::array>("merge");
-    if (merges == nullptr) {
-        return result;
-    }
+    const auto* merges = &merge_tables;
     for (std::size_t index = 0U; index < merges->size(); ++index) {
         const auto fail = [&result, index](const std::string_view detail) {
             result.rules.clear();

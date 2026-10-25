@@ -9,36 +9,44 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
 ### 准备
 
 1. 准备《金庸群侠传》DOS 版的完整游戏目录（含 `Z.COM`、`Z.DAT`、`RANGER.GRP`、`ALLSIN.GRP` 等原版文件）。
-2. 从 [Releases](https://github.com/Ouroboros/OpenLegend/releases) 下载 `OpenLegend-<版本>-windows-x64.zip`，解压得到三个文件：
+2. 从 [Releases](https://github.com/Ouroboros/OpenLegend/releases) 下载 `OpenLegend-<版本>-windows-x64.zip`，解压得到：
 
    | 文件 | 用途 |
    |---|---|
    | `openlegend.exe` | 游戏程序 |
    | `openlegend.toml` | 设置文件，默认值即可运行 |
-   | `battle_merges.toml` | 合战规则，见下文“合战规则” |
+   | `mods\original.toml` | 原版的 MOD 配置，开启多周目时使用，见下文“运行 MOD” |
+   | `mods\canglongzhuri.toml` | 苍龙逐日的 MOD 配置 |
 
-### 指定原版数据目录
+### 指定数据与存档目录
 
-二选一：
+`openlegend.toml` 只指定使用哪个 MOD 配置，数据目录、存档目录都写在 MOD 配置中。二选一：
 
-- **放进原版目录**：把三个文件复制到原版游戏目录，双击 `openlegend.exe`。
-- **单独存放**：三个文件放在任意目录，在 `openlegend.toml` 的 `[paths]` 中写明原版目录：
+- **放进原版目录**：把解压出的文件复制到原版游戏目录，双击 `openlegend.exe`。不指定 MOD 时，数据目录为启动时的当前目录，存档写入数据目录，不开启多周目。
+- **单独存放**：解压到任意目录，在 `openlegend.toml` 中指定原版的 MOD 配置：
+
+  ```toml
+  [paths]
+  mod = './mods/original.toml'
+  ```
+
+  并在 `mods/original.toml` 的 `[paths]` 中写明原版目录：
 
   ```toml
   [paths]
   data_dir = 'D:\Games\金庸群侠传'
-  save_dir = './save'
+  save_dir = './save/original'
   ```
 
-程序按以下顺序确定数据目录：命令行参数 `--data-dir <目录>`、MOD 配置的 `data_dir`、`openlegend.toml` 的 `data_dir`、启动时的当前目录。`save_dir` 可省略，省略时存档写入数据目录；相对路径以 `openlegend.exe` 所在目录为基准。
+数据目录为 MOD 配置的 `data_dir`，未写时为启动时的当前目录。存档目录为 MOD 配置的 `save_dir`，未写时为 `save/<MOD 配置文件名>`。相对路径以 `openlegend.exe` 所在目录为基准。
 
 ### 常用设置
 
-设置都写在 `openlegend.toml` 中，修改后重启游戏生效，完整说明见 [`config/openlegend.example.toml`](config/openlegend.example.toml)。
+界面与操作设置写在 `openlegend.toml` 中，修改后重启游戏生效，完整说明见 [`config/openlegend.example.toml`](config/openlegend.example.toml)。
 
 | 用途 | 写法 |
 |---|---|
-| 开启多周目 | `[new_game_plus]` 下 `enabled = true` |
+| 开启多周目 | 在 MOD 配置的 `[new_game_plus]` 下写 `enabled = true`，见“运行 MOD” |
 | 游戏画面大小 | `[display]` 下 `width`、`height` |
 | 窗口大小 | `[window]` 下 `width`、`height`、`maximized` |
 | 系统输入法输入姓名 | `[input]` 下 `name_entry = "modern"` |
@@ -47,7 +55,7 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
 
 ### 运行 MOD
 
-部分 MOD 修改了原程序 `Z.DAT` 中场景贴图、战场贴图、战斗动画的文件名表，需要用 MOD 配置文件告诉程序。在 `openlegend.toml` 中指定：
+每套游戏数据（原版或 MOD）对应一个 MOD 配置文件，写明数据目录、存档目录、多周目设置；部分 MOD 修改了原程序 `Z.DAT` 中场景贴图、战场贴图、战斗动画的文件名表，也写在这里。在 `openlegend.toml` 中指定：
 
 ```toml
 [paths]
@@ -58,11 +66,18 @@ mod = './mods/canglongzhuri.toml'
 
 ```toml
 format = 1                  # 格式版本，必须为 1
-name = "苍龙逐日"            # MOD 名称，写入日志
+name = "苍龙逐日"            # MOD 名称，显示在窗口标题并写入日志
 
-[paths]                     # 可选，覆盖 openlegend.toml 中的同名项
+[paths]                     # 可选，数据目录与存档目录
 data_dir = 'E:\Game\canglongzhuri'
 save_dir = './save/canglongzhuri'
+
+[new_game_plus]             # 可选，多周目设置；未写时不开启
+enabled = true
+
+[[merge]]                   # 可选，合战规则，见下文“合战规则”
+battle = 134
+merge_battle = 133
 
 [files]                     # 可选，按编号取用的文件名表，第 n 项为编号 n 的文件名
 scene_sprite_index = ["sdx", "sdx", ...]
@@ -75,9 +90,11 @@ fight_index = ["fdx000", "fdx001", ...]
 | `battlefield_index` / `battlefield_group` | 战场贴图索引 / 贴图 | `WDXnnn` / `WMPnnn` |
 | `fight_index` / `fight_group` | 战斗动画索引 / 动画 | `FIGHTnnn.IDX` / `FIGHTnnn.GRP` |
 
-- 存档目录按 MOD 的 `save_dir`、`openlegend.toml` 的 `save_dir`、`save/<MOD 配置文件名>` 的顺序确定，不同 MOD 的存档默认分开；
+- 未写 `save_dir` 时存档放在 `save/<MOD 配置文件名>`，不同 MOD 的存档默认分开；上次使用的存档槽由程序记在 MOD 配置的 `[saves]` 中；
 - 未列出的文件名表使用原版命名，出现未知字段或取值不合法时启动报错；
-- 已整理的配置见 [`config/mods/`](config/mods/)，目前有苍龙逐日，`[files]` 取自其 `Z.DAT`；
+- `[new_game_plus]` 的字段与默认值见 [`config/mods/original.toml`](config/mods/original.toml)，不同 MOD 可以分别设置；
+- `openlegend.toml` 中不能再写 `data_dir`、`save_dir`、`[new_game_plus]`、`[saves]`，写了会在启动时报错；
+- 已整理的配置见 [`config/mods/`](config/mods/)：原版 `original.toml`，苍龙逐日 `canglongzhuri.toml`（`[files]` 取自其 `Z.DAT`）；
 - 人物、物品、场景等记录数量和对话条数按数据文件读取；MOD 在 `Z.DAT` 中修改的战斗、成长等规则不生效，游戏按本项目的规则运行。
 
 ### 日志
@@ -127,10 +144,10 @@ fight_index = ["fdx000", "fdx001", ...]
 
 ### 多周目（New Game+）
 
-- 默认关闭，`[new_game_plus].enabled = true` 开启；
+- 默认关闭，在 MOD 配置的 `[new_game_plus]` 中写 `enabled = true` 开启（原版使用 `mods/original.toml`）；
 - 开启后存档格式为 TOML；通关后可保存通关进度，在标题界面选择 New Game+ 进入下一周目；
 - 人物、武功、物品按规则继承到下一周目，左右互搏也一并继承；
-- 敌人每多一个周目按下表增长，当前生命和内力随最大值同步增加；数值都可在 `[new_game_plus]` 中设置：
+- 敌人每多一个周目按下表增长，当前生命和内力随最大值同步增加；数值都可在 MOD 配置的 `[new_game_plus]` 中设置：
 
   | 属性 | 每周目增加 | 配置项 |
   |---|---|---|
@@ -270,9 +287,9 @@ fight_index = ["fdx000", "fdx001", ...]
 
 ### 合战规则
 
-- `openlegend.toml` 同目录下的 `battle_merges.toml` 可让一场剧情战斗并入另一场战斗的敌人，并在开战前插播对白；
+- MOD 配置中的 `[[merge]]` 可让一场剧情战斗并入另一场战斗的敌人，并在开战前插播对白；
 - 每条规则列出所依赖资源文件的 SHA-256，不符时该条规则不生效；敌方槽位或站位不足时本场按原版进行；
-- 附带的规则：NG+ 中主角道德为 0 时，最终战十大善人与十大恶人同场出战。见 [`config/battle_merges.toml`](config/battle_merges.toml)。
+- 附带的规则：NG+ 中主角道德为 0 时，最终战十大善人与十大恶人同场出战。规则写在 [`config/mods/original.toml`](config/mods/original.toml) 中，使用原版 MOD 配置时生效。
 
 ### 运行设置
 

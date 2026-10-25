@@ -268,9 +268,9 @@ LegacyRuntimeLoopResult run_legacy_runtime_loop(
             return result;
         }
         game.set_weather_presentation_enabled(true);
-        game.set_save_slot_memory(settings.last_save_slot, settings.configuration_path);
-        game.load_battle_merge_rules(
-            settings.configuration_path.parent_path() / "battle_merges.toml");
+        // 上次存档槽记在MOD配置的[saves]中；未指定MOD时不记忆。
+        game.set_save_slot_memory(
+            settings.last_save_slot, settings.mod_configuration.value_or(std::filesystem::path{}));
         if (settings.mod_configuration.has_value()) {
             if (const auto error = game.load_mod_configuration(*settings.mod_configuration);
                 !error.empty()) {

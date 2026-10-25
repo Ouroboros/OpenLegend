@@ -8,10 +8,13 @@
 
 #include <toml++/toml.hpp>
 
+#include "openlegend/persistence/save_slot.hpp"
+
 namespace openlegend::app {
 namespace {
 
-constexpr std::array<std::string_view, 4U> kRootKeys{"format", "name", "paths", "files"};
+constexpr std::array<std::string_view, 7U> kRootKeys{
+    "format", "name", "paths", "new_game_plus", "saves", "merge", "files"};
 
 constexpr std::array<std::string_view, 2U> kPathKeys{"data_dir", "save_dir"};
 
@@ -109,6 +112,41 @@ ModConfigurationLoadResult load_mod_configuration(const std::filesystem::path& p
         if (result.error = read_paths(*paths, result.configuration); !result.error.empty()) {
             return result;
         }
+    }
+    if (const auto* node = document.get("new_game_plus")) {
+        const auto* table = node->as_table();
+        if (table == nullptr) {
+            result.error = "new_game_plus must be a table";
+            return result;
+        }
+        result.configuration.new_game_plus = *table;
+    }
+    if (const auto* node = document.get("saves")) {
+        const auto* saves = node->as_table();
+        if (saves == nullptr) {
+            result.error = "saves must be a table";
+            return result;
+        }
+        for (const auto& [key, value] : *saves) {
+            static_cast<void>(value);
+            if (key.str() != "last_slot") {
+                result.error = "saves." + std::string{key.str()} + " is not a known field";
+                return result;
+            }
+        }
+        const auto slot = (*saves)["last_slot"].value<std::int64_t>();
+        if (slot.has_value() && *slot >= 0 &&
+            *slot < static_cast<std::int64_t>(persistence::kNumberedSaveSlotCount)) {
+            result.configuration.last_save_slot = static_cast<std::uint16_t>(*slot);
+        }
+    }
+    if (const auto* node = document.get("merge")) {
+        const auto* merges = node->as_array();
+        if (merges == nullptr) {
+            result.error = "merge must be an array of tables ([[merge]])";
+            return result;
+        }
+        result.configuration.merges = *merges;
     }
     if (const auto* node = document.get("files")) {
         const auto* files = node->as_table();

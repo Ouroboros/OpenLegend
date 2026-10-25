@@ -41,6 +41,8 @@ enum class DataDirectoryStatus {
     empty_configuration_value,
     directory_query_failed,
     directory_not_found_or_not_directory,
+    // 游戏不再接受命令行--data-dir，数据目录写在MOD配置中。
+    command_line_not_supported,
 };
 
 struct DataDirectoryResolution {
@@ -63,8 +65,7 @@ struct SaveDirectoryConfigurationLoadResult {
     SaveDirectoryConfigurationStatus status{SaveDirectoryConfigurationStatus::ready};
     std::filesystem::path directory;
     bool configured{};
-    // 来自MOD配置：MOD的[paths] save_dir，或指定了MOD而两处都未写save_dir时默认的
-    // 可执行文件目录下save/<MOD配置文件名>。
+    // 来自MOD配置：MOD的[paths] save_dir，未写时为可执行文件目录下save/<MOD配置文件名>。
     bool from_mod{};
     std::string detail;
 };
@@ -72,6 +73,8 @@ struct SaveDirectoryConfigurationLoadResult {
 // [paths] mod：与data_dir配套的MOD配置文件；未配置时使用程序内置的原版设定。
 struct ModPathConfigurationLoadResult {
     std::optional<std::filesystem::path> path;
+    // MOD配置中的name，用于窗口标题与日志。
+    std::string name;
     // 取值无效时给出说明，使用内置命名。
     std::string error;
 };
@@ -81,9 +84,8 @@ struct PathsConfigurationLoadResult {
     static constexpr std::string_view data_directory_toml_key = "data_dir";
     static constexpr std::string_view save_directory_toml_key = "save_dir";
     static constexpr std::string_view mod_toml_key = "mod";
-    static constexpr std::array<std::string_view, 3U> toml_field_order{
-        data_directory_toml_key,
-        save_directory_toml_key,
+    // openlegend.toml的[paths]只有mod；data_dir、save_dir只用于检测旧写法并报错。
+    static constexpr std::array<std::string_view, 1U> toml_field_order{
         mod_toml_key,
     };
 
@@ -331,6 +333,8 @@ enum class NewGamePlusConfigurationStatus {
     invalid_value,
     invalid_limits,
     unknown_key,
+    // openlegend.toml中仍有[new_game_plus]；NG+设置须写在MOD配置中。
+    moved_to_mod_configuration,
 };
 
 struct SavesConfigurationLoadResult {
@@ -340,7 +344,10 @@ struct SavesConfigurationLoadResult {
         last_slot_toml_key,
     };
 
+    // 上次使用的存档槽，来自MOD配置的[saves]；未指定MOD时不记忆。
     std::optional<std::uint16_t> last_slot;
+    // openlegend.toml中仍有[saves]时给出说明。
+    std::string error;
 };
 
 struct NewGamePlusConfigurationLoadResult {
@@ -394,15 +401,13 @@ struct RuntimeConfiguration {
     SavesConfigurationLoadResult saves;
     NewGamePlusConfigurationLoadResult new_game_plus;
 
-    static constexpr std::array<std::string_view, 8U> toml_table_order{
+    static constexpr std::array<std::string_view, 6U> toml_table_order{
         PathsConfigurationLoadResult::toml_table_name,
         LoggingConfigurationLoadResult::toml_table_name,
         InputConfigurationLoadResult::toml_table_name,
         TimingConfigurationLoadResult::toml_table_name,
         WindowConfigurationLoadResult::toml_table_name,
         DisplayConfigurationLoadResult::toml_table_name,
-        SavesConfigurationLoadResult::toml_table_name,
-        NewGamePlusConfigurationLoadResult::toml_table_name,
     };
 };
 

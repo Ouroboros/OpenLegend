@@ -42,10 +42,11 @@ if exist "%ZIP%" del /q "%ZIP%"
 mkdir "%STAGE%" || exit /b 1
 copy /y "%EXE%" "%STAGE%\openlegend.exe" >nul || exit /b 1
 copy /y "%PROJECT_ROOT%\config\openlegend.example.toml" "%STAGE%\openlegend.toml" >nul || exit /b 1
-copy /y "%PROJECT_ROOT%\config\battle_merges.toml" "%STAGE%\battle_merges.toml" >nul || exit /b 1
+mkdir "%STAGE%\mods" || exit /b 1
+copy /y "%PROJECT_ROOT%\config\mods\*.toml" "%STAGE%\mods\" >nul || exit /b 1
 
-rem tar.exe writes zip entries with standard forward-slash paths; files sit at the zip root.
-"%SystemRoot%\System32\tar.exe" -a -c -f "%ZIP%" -C "%STAGE%" openlegend.exe openlegend.toml battle_merges.toml
+rem tar.exe writes zip entries with standard forward-slash paths; files sit at the zip root, MOD configurations under mods/.
+"%SystemRoot%\System32\tar.exe" -a -c -f "%ZIP%" -C "%STAGE%" openlegend.exe openlegend.toml mods
 if errorlevel 1 (
     echo [OpenLegend] Packing failed.
     exit /b 1

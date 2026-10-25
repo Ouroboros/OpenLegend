@@ -119,6 +119,9 @@ std::string_view new_game_plus_configuration_status_message(
         return "NG+ configuration produces invalid or overflowing limits";
     case NewGamePlusConfigurationStatus::unknown_key:
         return "unknown NG+ configuration key";
+    case NewGamePlusConfigurationStatus::moved_to_mod_configuration:
+        return "[new_game_plus] belongs in the MOD configuration ([paths] mod), "
+               "not in openlegend.toml";
     }
     return "unknown NG+ configuration status";
 }

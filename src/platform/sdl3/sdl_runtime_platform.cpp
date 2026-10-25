@@ -175,6 +175,12 @@ SdlRuntimePlatform::~SdlRuntimePlatform() {
     SDL_Quit();
 }
 
+void SdlRuntimePlatform::set_window_title(const std::string& title) {
+    if (window_ != nullptr) {
+        static_cast<void>(SDL_SetWindowTitle(window_, title.c_str()));
+    }
+}
+
 bool SdlRuntimePlatform::valid() const noexcept {
     return window_ != nullptr && renderer_ != nullptr && texture_ != nullptr;
 }

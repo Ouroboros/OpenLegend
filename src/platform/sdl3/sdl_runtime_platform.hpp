@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 
 #include <SDL3/SDL.h>
 
@@ -45,6 +46,9 @@ public:
     SdlRuntimePlatform& operator=(const SdlRuntimePlatform&) = delete;
 
     NODISCARD bool valid() const noexcept;
+
+    // 设置窗口标题（UTF-8）。
+    void set_window_title(const std::string& title);
 
     NODISCARD bool query_window_state(
         int& normal_width, int& normal_height, bool& maximized) const noexcept;
