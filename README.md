@@ -30,7 +30,7 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
   save_dir = './save'
   ```
 
-程序按以下顺序确定数据目录：命令行参数 `--data-dir <目录>`、`[paths] data_dir`、启动时的当前目录。`save_dir` 可省略，省略时存档写入数据目录；相对路径以 `openlegend.exe` 所在目录为基准。
+程序按以下顺序确定数据目录：命令行参数 `--data-dir <目录>`、MOD 配置的 `data_dir`、`openlegend.toml` 的 `data_dir`、启动时的当前目录。`save_dir` 可省略，省略时存档写入数据目录；相对路径以 `openlegend.exe` 所在目录为基准。
 
 ### 常用设置
 
@@ -44,6 +44,41 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
 | 系统输入法输入姓名 | `[input]` 下 `name_entry = "modern"` |
 | 恢复原版逐格移动 | `[input]` 下 `smooth_movement = false` |
 | 世界地图按键 | `[input]` 下 `world_map_keys` |
+
+### 运行 MOD
+
+部分 MOD 修改了原程序 `Z.DAT` 中场景贴图、战场贴图、战斗动画的文件名表，需要用 MOD 配置文件告诉程序。在 `openlegend.toml` 中指定：
+
+```toml
+[paths]
+mod = './mods/canglongzhuri.toml'
+```
+
+未指定 `mod` 时使用程序内置的原版设定。MOD 配置文件格式：
+
+```toml
+format = 1                  # 格式版本，必须为 1
+name = "苍龙逐日"            # MOD 名称，写入日志
+
+[paths]                     # 可选，覆盖 openlegend.toml 中的同名项
+data_dir = 'E:\Game\canglongzhuri'
+save_dir = './save/canglongzhuri'
+
+[files]                     # 可选，按编号取用的文件名表，第 n 项为编号 n 的文件名
+scene_sprite_index = ["sdx", "sdx", ...]
+fight_index = ["fdx000", "fdx001", ...]
+```
+
+| `[files]` 字段 | 内容 | 原版命名 |
+|---|---|---|
+| `scene_sprite_index` / `scene_sprite_group` | 场景贴图索引 / 贴图 | `SDXnnn` / `SMPnnn` |
+| `battlefield_index` / `battlefield_group` | 战场贴图索引 / 贴图 | `WDXnnn` / `WMPnnn` |
+| `fight_index` / `fight_group` | 战斗动画索引 / 动画 | `FIGHTnnn.IDX` / `FIGHTnnn.GRP` |
+
+- 存档目录按 MOD 的 `save_dir`、`openlegend.toml` 的 `save_dir`、`save/<MOD 配置文件名>` 的顺序确定，不同 MOD 的存档默认分开；
+- 未列出的文件名表使用原版命名，出现未知字段或取值不合法时启动报错；
+- 已整理的配置见 [`config/mods/`](config/mods/)，目前有苍龙逐日，`[files]` 取自其 `Z.DAT`；
+- 人物、物品、场景等记录数量和对话条数按数据文件读取；MOD 在 `Z.DAT` 中修改的战斗、成长等规则不生效，游戏按本项目的规则运行。
 
 ### 日志
 
@@ -242,6 +277,7 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
 ### 运行设置
 
 - 可设置游戏数据目录、存档目录、游戏画面大小、窗口大小和启动时是否最大化；
+- 可通过 MOD 配置运行改动过文件名表和记录数量的 MOD 数据；
 - 可设置移动长按延迟、菜单连发速度和淡入淡出速度；
 - 每次启动可生成单独的日志文件；
 - 游戏闲置时降低 CPU 占用。
