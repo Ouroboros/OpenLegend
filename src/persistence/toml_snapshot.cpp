@@ -140,7 +140,7 @@ void read_no_magic_count(
     require(node != nullptr, "no_magic_count is required");
     destination.clear();
     if (const auto* values = node->as_array(); values != nullptr) {
-        require(values->size() == model::kItemCount,
+        require(values->size() <= model::kMaximumRecordCount,
             "no_magic_count array has an invalid length");
         for (std::size_t item_id = 0U; item_id < values->size(); ++item_id) {
             const auto value = integer_value(values->get(item_id), "no_magic_count");
@@ -159,7 +159,7 @@ void read_no_magic_count(
             key_text.data(), key_text.data() + key_text.size(), item_id);
         require(parse_error == std::errc{} &&
                 parse_end == key_text.data() + key_text.size() &&
-                item_id >= 0 && item_id < static_cast<std::int64_t>(model::kItemCount),
+                item_id >= 0 && item_id < static_cast<std::int64_t>(model::kMaximumRecordCount),
             "no_magic_count keys must be item identifiers");
         destination[static_cast<std::int16_t>(item_id)] =
             integer_value(&value_node, "no_magic_count");
@@ -248,8 +248,8 @@ void validate_context(const TomlSnapshotContext& context) {
     }
 }
 
-NODISCARD std::array<bool, model::kRoleCount> saved_roles(const model::RuntimeRangerState& ranger) {
-    std::array<bool, model::kRoleCount> result{};
+NODISCARD std::vector<bool> saved_roles(const model::RuntimeRangerState& ranger) {
+    std::vector<bool> result(ranger.roles.size());
     for (std::size_t index = 0U; index < result.size(); ++index) {
         result[index] = ranger.roles[index].ever_joined;
     }
@@ -319,7 +319,7 @@ void read_role(const toml::table& table, model::RoleState& role) {
 void read_roles(const toml::table& document, model::RuntimeRangerState& ranger) {
     const auto& roles = array_value(document.get("roles"), "roles");
     require(roles.size() <= ranger.roles.size(), "too many saved roles");
-    std::array<bool, model::kRoleCount> present{};
+    std::vector<bool> present(ranger.roles.size());
     std::int64_t previous_id = -1;
     for (const auto& node : roles) {
         const auto& table = table_value(&node, kRoleIntegers.size() + 12U, "roles entry");
@@ -336,13 +336,13 @@ void read_roles(const toml::table& document, model::RuntimeRangerState& ranger) 
 
 void read_mutable_definitions(const toml::table& document, model::RuntimeRangerState& ranger) {
     const auto& items = table_value(document.get("item_state"), 1U, "item_state");
-    std::array<std::int16_t, model::kItemCount> users{};
+    std::vector<std::int16_t> users(ranger.items.size());
     read_integer_array(items.get("users"), users, "item_state.users");
     for (std::size_t index = 0U; index < users.size(); ++index) {
         ranger.items[index].set_word(model::item_word::user, users[index]);
     }
     const auto& scenes = table_value(document.get("scene_state"), 1U, "scene_state");
-    std::array<std::int16_t, model::kSceneMetadataCount> conditions{};
+    std::vector<std::int16_t> conditions(ranger.scenes.size());
     read_integer_array(scenes.get("entrance_conditions"), conditions, "scene_state.entrance_conditions");
     for (std::size_t index = 0U; index < conditions.size(); ++index) {
         ranger.scenes[index].set_word(model::scene_metadata_word::entrance_condition, conditions[index]);
@@ -366,9 +366,14 @@ void read_scene_archives(const toml::table& document, model::SceneArchives& arch
     auto events = decode_scene_archive(
         string_value(table.get("d_compressed_base64"), "d_compressed_base64"), SceneArchiveKind::events);
     require(maps.has_value() && events.has_value(), "invalid compressed scene archives");
+    const auto scene_count = maps->size() / model::kSceneMapBytesPerScene;
+    require(events->size() == scene_count * model::kSceneEventBytesPerScene,
+        "scene map and event archives have different scene counts");
     archives.scene_maps = std::move(*maps);
     archives.scene_events = std::move(*events);
-    for (std::size_t index = 0U; index < model::kSceneCount; ++index) {
+    archives.scene_map_ends.assign(scene_count, 0U);
+    archives.scene_event_ends.assign(scene_count, 0U);
+    for (std::size_t index = 0U; index < scene_count; ++index) {
         archives.scene_map_ends[index] = static_cast<std::uint32_t>((index + 1U) * model::kSceneMapBytesPerScene);
         archives.scene_event_ends[index] = static_cast<std::uint32_t>((index + 1U) * model::kSceneEventBytesPerScene);
     }

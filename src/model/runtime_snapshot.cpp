@@ -29,7 +29,7 @@ NODISCARD bool header_valid(const RuntimeRangerState& ranger) noexcept {
         header.word(header_word::encode) < 0 || header.word(header_word::encode) > 3) {
         return false;
     }
-    std::array<bool, kRoleCount> members{};
+    std::vector<bool> members(ranger.roles.size());
     for (std::size_t slot = 0U; slot < kTeamMemberCount; ++slot) {
         const auto role_id = header.team_member(slot).value;
         if (!reference_valid(role_id, ranger.roles.size())) {
@@ -314,9 +314,11 @@ std::optional<RangerHeader> encode_legacy_header(const RuntimeRangerHeader& head
 }
 
 bool RuntimeRangerState::valid() const {
-    return roles.size() == kRoleCount && items.size() == kItemCount &&
-        scenes.size() == kSceneMetadataCount && magics.size() == kMagicCount &&
-        shops.size() == kShopCount && std::all_of(
+    const auto in_range = [](const std::size_t count) {
+        return count > 0U && count <= kMaximumRecordCount;
+    };
+    return in_range(roles.size()) && in_range(items.size()) && in_range(scenes.size()) &&
+        in_range(magics.size()) && in_range(shops.size()) && std::all_of(
             roles.begin(), roles.end(), [this](const RoleState& role) {
                 const auto name = text::encode_big5(role.name);
                 const auto nickname = text::encode_big5(role.nickname);
@@ -326,7 +328,9 @@ bool RuntimeRangerState::valid() const {
 }
 
 bool RuntimeRangerState::matches_legacy_definitions(const RangerState& baseline) const {
-    if (!valid() || !baseline.valid()) {
+    if (!valid() || !baseline.valid() || roles.size() != baseline.roles.size() ||
+        items.size() != baseline.items.size() || scenes.size() != baseline.scenes.size() ||
+        shops.size() != baseline.shops.size()) {
         return false;
     }
     for (std::size_t index = 0U; index < roles.size(); ++index) {
@@ -390,6 +394,7 @@ std::optional<RuntimeRangerState> decode_legacy_ranger(RangerState ranger) {
         return std::nullopt;
     }
     RuntimeRangerState result;
+    result.roles.resize(ranger.roles.size());
     for (std::size_t index = 0U; index < ranger.roles.size(); ++index) {
         auto role = decode_legacy_role(ranger.roles[index]);
         if (!role.has_value()) {
@@ -436,6 +441,7 @@ std::optional<GameSnapshot> encode_legacy_snapshot(const RuntimeGameSnapshot& sn
         return std::nullopt;
     }
     GameSnapshot result;
+    result.ranger.roles.resize(snapshot.ranger.roles.size());
     for (std::size_t index = 0U; index < snapshot.ranger.roles.size(); ++index) {
         auto record = encode_legacy_role(snapshot.ranger.roles[index]);
         if (!record.has_value()) {

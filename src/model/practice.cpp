@@ -23,7 +23,7 @@ std::optional<std::int64_t> practice_experience_requirement(
 std::optional<PracticeCost> manual_experience_requirement(
     const RoleState& role, const ItemRecord& item, const std::size_t item_id,
     const PracticeRules& rules) noexcept {
-    if (item_id >= kItemCount) {
+    if (item_id >= kMaximumRecordCount) {
         return std::nullopt;
     }
     const auto magic_id = item.word(item_word::magic_id);

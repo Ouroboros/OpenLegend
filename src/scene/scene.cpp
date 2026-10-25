@@ -379,8 +379,8 @@ SceneSession::SceneSession(
         !load_shadow_mask(shifted_shadow_mask, "4_shadow.msk", shifted_shadow_mask_)) {
         return;
     }
-    if (scene_id_ < 0 || static_cast<std::size_t>(scene_id_) >= model::kSceneCount) {
-        error_ = "scene id is outside the 100-scene archive";
+    if (scene_id_ < 0 || static_cast<std::size_t>(scene_id_) >= snapshot_.scene_count()) {
+        error_ = "scene id is outside the scene archive";
         return;
     }
     if (context_ != SceneSessionContext::world_event_overlay && !load_scene_sprites()) {
@@ -2273,7 +2273,7 @@ void SceneSession::modify_event(const std::span<const std::int16_t, 13> argument
         target_event = event_context_.event_index;
     }
     if (target_scene < 0 || target_event < 0 ||
-        static_cast<std::size_t>(target_scene) >= model::kSceneCount ||
+        static_cast<std::size_t>(target_scene) >= snapshot_.scene_count() ||
         static_cast<std::size_t>(target_event) >= model::kSceneEventCount) {
         return;
     }

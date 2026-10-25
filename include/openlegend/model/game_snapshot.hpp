@@ -20,6 +20,7 @@ inline constexpr std::size_t kSceneMetadataRecordBytes = 52U;
 inline constexpr std::size_t kMagicRecordBytes = 136U;
 inline constexpr std::size_t kShopRecordBytes = 30U;
 
+// 原版数据的记录数，只作默认值；实际数量由数据文件决定（RANGER.IDX各段长度、ALLSIN.IDX长度）。
 inline constexpr std::size_t kRoleCount = 320U;
 inline constexpr std::size_t kItemCount = 200U;
 inline constexpr std::size_t kSceneMetadataCount = 84U;
@@ -32,6 +33,8 @@ inline constexpr std::array<std::uint32_t, 6> kRangerCumulativeEnds{
     836U, 59'076U, 97'076U, 101'444U, 114'092U, 114'242U};
 
 inline constexpr std::size_t kSceneCount = 100U;
+// 记录编号以int16保存，各类记录数不超过此值。
+inline constexpr std::size_t kMaximumRecordCount = 32'767U;
 inline constexpr std::size_t kSceneLayerCount = 6U;
 inline constexpr std::size_t kSceneCoordinateCount = 64U;
 inline constexpr std::size_t kSceneTileCount = 4'096U;
@@ -323,12 +326,15 @@ struct RangerState {
 };
 
 struct SceneArchives {
-    std::array<std::uint32_t, kSceneCount> scene_map_ends{};
+    std::vector<std::uint32_t> scene_map_ends = std::vector<std::uint32_t>(kSceneCount);
     std::vector<std::uint8_t> scene_maps;
-    std::array<std::uint32_t, kSceneCount> scene_event_ends{};
+    std::vector<std::uint32_t> scene_event_ends = std::vector<std::uint32_t>(kSceneCount);
     std::vector<std::uint8_t> scene_events;
 
     NODISCARD bool valid() const noexcept;
+
+    // 场景地图数（由场景存档索引长度决定）。
+    NODISCARD std::size_t scene_count() const noexcept { return scene_map_ends.size(); }
 
     NODISCARD std::optional<std::int16_t> scene_value(
         std::size_t scene, SceneLayer layer, std::size_t linear_tile) const noexcept;

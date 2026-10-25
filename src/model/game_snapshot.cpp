@@ -15,10 +15,11 @@ void write_i16le(
 }
 
 NODISCARD bool valid_ends(
-    const std::array<std::uint32_t, kSceneCount>& ends,
+    const std::vector<std::uint32_t>& ends,
     const std::size_t record_bytes,
     const std::size_t total_bytes) noexcept {
-    if (total_bytes != record_bytes * kSceneCount) {
+    if (ends.empty() || ends.size() > kMaximumRecordCount ||
+        total_bytes != record_bytes * ends.size()) {
         return false;
     }
     for (std::size_t index = 0U; index < ends.size(); ++index) {
@@ -54,13 +55,16 @@ void RangerHeader::set_inventory(
 }
 
 bool RangerState::valid() const noexcept {
-    return roles.size() == kRoleCount && items.size() == kItemCount &&
-        scenes.size() == kSceneMetadataCount && magics.size() == kMagicCount &&
-        shops.size() == kShopCount;
+    const auto in_range = [](const std::size_t count) {
+        return count > 0U && count <= kMaximumRecordCount;
+    };
+    return in_range(roles.size()) && in_range(items.size()) && in_range(scenes.size()) &&
+        in_range(magics.size()) && in_range(shops.size());
 }
 
 bool SceneArchives::valid() const noexcept {
-    return valid_ends(scene_map_ends, kSceneMapBytesPerScene, scene_maps.size()) &&
+    return scene_map_ends.size() == scene_event_ends.size() &&
+        valid_ends(scene_map_ends, kSceneMapBytesPerScene, scene_maps.size()) &&
         valid_ends(scene_event_ends, kSceneEventBytesPerScene, scene_events.size());
 }
 
@@ -73,8 +77,8 @@ std::optional<std::int16_t> SceneArchives::scene_value(
     const SceneLayer layer,
     const std::size_t linear_tile) const noexcept {
     const auto layer_index = static_cast<std::size_t>(layer);
-    if (scene >= kSceneCount || layer_index >= kSceneLayerCount || linear_tile >= kSceneTileCount ||
-        scene_maps.size() != kSceneCount * kSceneMapBytesPerScene) {
+    if (scene >= scene_count() || layer_index >= kSceneLayerCount || linear_tile >= kSceneTileCount ||
+        scene_maps.size() != scene_count() * kSceneMapBytesPerScene) {
         return std::nullopt;
     }
     const std::size_t word_index =
@@ -89,8 +93,8 @@ bool SceneArchives::set_scene_value(
     const std::size_t linear_tile,
     const std::int16_t value) noexcept {
     const auto layer_index = static_cast<std::size_t>(layer);
-    if (scene >= kSceneCount || layer_index >= kSceneLayerCount || linear_tile >= kSceneTileCount ||
-        scene_maps.size() != kSceneCount * kSceneMapBytesPerScene) {
+    if (scene >= scene_count() || layer_index >= kSceneLayerCount || linear_tile >= kSceneTileCount ||
+        scene_maps.size() != scene_count() * kSceneMapBytesPerScene) {
         return false;
     }
     const std::size_t word_index =
@@ -104,9 +108,9 @@ std::optional<std::int16_t> SceneArchives::event_value(
     const std::size_t event,
     const SceneEventField field) const noexcept {
     const auto field_index = static_cast<std::size_t>(field);
-    if (scene >= kSceneCount || event >= kSceneEventCount ||
+    if (scene >= scene_count() || event >= kSceneEventCount ||
         field_index >= kSceneEventWordCount ||
-        scene_events.size() != kSceneCount * kSceneEventBytesPerScene) {
+        scene_events.size() != scene_count() * kSceneEventBytesPerScene) {
         return std::nullopt;
     }
     const std::size_t word_index =
@@ -121,9 +125,9 @@ bool SceneArchives::set_event_value(
     const SceneEventField field,
     const std::int16_t value) noexcept {
     const auto field_index = static_cast<std::size_t>(field);
-    if (scene >= kSceneCount || event >= kSceneEventCount ||
+    if (scene >= scene_count() || event >= kSceneEventCount ||
         field_index >= kSceneEventWordCount ||
-        scene_events.size() != kSceneCount * kSceneEventBytesPerScene) {
+        scene_events.size() != scene_count() * kSceneEventBytesPerScene) {
         return false;
     }
     const std::size_t word_index =

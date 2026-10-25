@@ -47,7 +47,7 @@ std::optional<EnemyAttributes> calculate_enemy_attributes(
     result.magic_levels = baseline.magic_levels;
     for (std::size_t slot = 0U; slot < baseline.magic_ids.size(); ++slot) {
         const auto magic_id = baseline.magic_ids[slot].value;
-        if (magic_id < -1 || magic_id >= static_cast<std::int16_t>(kMagicCount) ||
+        if (magic_id < -1 || magic_id >= static_cast<std::int16_t>(kMaximumRecordCount) ||
             baseline.magic_levels[slot] < 0) {
             return std::nullopt;
         }

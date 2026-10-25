@@ -151,21 +151,39 @@ NODISCARD SnapshotLoadResult decode_ranger(
         return load_error(
             PersistenceStatus::invalid_ranger_index_order, index_file.path);
     }
-    if (ends != model::kRangerCumulativeEnds) {
+    // 表头长度固定；其余各段长度须为记录大小的整数倍，记录数由段长决定。
+    constexpr std::array<std::size_t, 5> kRecordBytes{
+        model::kRoleRecordBytes, model::kItemRecordBytes, model::kSceneMetadataRecordBytes,
+        model::kMagicRecordBytes, model::kShopRecordBytes};
+    std::array<std::size_t, 5> counts{};
+    if (ends[0] != model::kRangerHeaderBytes) {
         return load_error(PersistenceStatus::invalid_ranger_layout, index_file.path);
+    }
+    for (std::size_t section = 0U; section < counts.size(); ++section) {
+        const auto length = static_cast<std::size_t>(ends[section + 1U] - ends[section]);
+        counts[section] = length / kRecordBytes[section];
+        if (length % kRecordBytes[section] != 0U || counts[section] > model::kMaximumRecordCount) {
+            return load_error(PersistenceStatus::invalid_ranger_layout, index_file.path);
+        }
     }
     if (group_file.bytes.size() != ends.back()) {
         return load_error(
             PersistenceStatus::invalid_ranger_group_size, group_file.path);
     }
 
+    auto& ranger = snapshot.ranger;
+    ranger.roles.resize(counts[0]);
+    ranger.items.resize(counts[1]);
+    ranger.scenes.resize(counts[2]);
+    ranger.magics.resize(counts[3]);
+    ranger.shops.resize(counts[4]);
     const std::span<const std::uint8_t> bytes{group_file.bytes};
-    std::copy_n(bytes.begin(), model::kRangerHeaderBytes, snapshot.ranger.header.bytes.begin());
-    decode_records(bytes, 0U + model::kRangerCumulativeEnds[0], snapshot.ranger.roles);
-    decode_records(bytes, model::kRangerCumulativeEnds[1], snapshot.ranger.items);
-    decode_records(bytes, model::kRangerCumulativeEnds[2], snapshot.ranger.scenes);
-    decode_records(bytes, model::kRangerCumulativeEnds[3], snapshot.ranger.magics);
-    decode_records(bytes, model::kRangerCumulativeEnds[4], snapshot.ranger.shops);
+    std::copy_n(bytes.begin(), model::kRangerHeaderBytes, ranger.header.bytes.begin());
+    decode_records(bytes, ends[0], ranger.roles);
+    decode_records(bytes, ends[1], ranger.items);
+    decode_records(bytes, ends[2], ranger.scenes);
+    decode_records(bytes, ends[3], ranger.magics);
+    decode_records(bytes, ends[4], ranger.shops);
     return SnapshotLoadResult{};
 }
 
@@ -173,11 +191,14 @@ NODISCARD SnapshotLoadResult decode_scene_archive(
     const LoadedBytes& index_file,
     const LoadedBytes& group_file,
     const std::size_t bytes_per_scene,
-    std::array<std::uint32_t, model::kSceneCount>& ends,
+    std::vector<std::uint32_t>& ends,
     std::vector<std::uint8_t>& output) {
-    if (index_file.bytes.size() != model::kSceneCount * 4U) {
+    // 场景数由索引长度决定（每个场景一个32位累计结束位置）。
+    if (index_file.bytes.empty() || index_file.bytes.size() % 4U != 0U ||
+        index_file.bytes.size() / 4U > model::kMaximumRecordCount) {
         return load_error(PersistenceStatus::invalid_scene_index_size, index_file.path);
     }
+    ends.assign(index_file.bytes.size() / 4U, 0U);
     static_cast<void>(decode_index(index_file.bytes, ends));
     if (!monotonic_nonzero(ends)) {
         return load_error(PersistenceStatus::invalid_scene_index_layout, index_file.path);
@@ -197,12 +218,15 @@ NODISCARD SnapshotLoadResult decode_scene_archive(
 NODISCARD SnapshotLoadResult decode_fixed_scene_group(
     const LoadedBytes& group_file,
     const std::size_t bytes_per_scene,
-    std::array<std::uint32_t, model::kSceneCount>& ends,
+    std::vector<std::uint32_t>& ends,
     std::vector<std::uint8_t>& output) {
-    const std::size_t expected_size = bytes_per_scene * model::kSceneCount;
-    if (group_file.bytes.size() != expected_size) {
+    // 无索引的场景存档：场景数由文件长度决定。
+    const auto scene_count = group_file.bytes.size() / bytes_per_scene;
+    if (scene_count == 0U || group_file.bytes.size() % bytes_per_scene != 0U ||
+        scene_count > model::kMaximumRecordCount) {
         return load_error(PersistenceStatus::invalid_scene_group_size, group_file.path);
     }
+    ends.assign(scene_count, 0U);
     for (std::size_t index = 0U; index < ends.size(); ++index) {
         ends[index] = static_cast<std::uint32_t>((index + 1U) * bytes_per_scene);
     }
@@ -244,7 +268,6 @@ NODISCARD SnapshotLoadResult decode_numbered_slot(
 
 NODISCARD std::vector<std::uint8_t> encode_ranger(const model::RangerState& ranger) {
     std::vector<std::uint8_t> bytes;
-    bytes.reserve(model::kRangerCumulativeEnds.back());
     bytes.insert(bytes.end(), ranger.header.bytes.begin(), ranger.header.bytes.end());
     encode_records(ranger.roles, bytes);
     encode_records(ranger.items, bytes);
@@ -599,7 +622,20 @@ SnapshotWriteResult write_snapshot(
         return result;
     }
 
-    const auto ranger_index = encode_index(model::kRangerCumulativeEnds);
+    const auto& ranger = snapshot.ranger;
+    std::array<std::uint32_t, 6> ranger_ends{};
+    ranger_ends[0] = static_cast<std::uint32_t>(model::kRangerHeaderBytes);
+    ranger_ends[1] = ranger_ends[0] +
+        static_cast<std::uint32_t>(ranger.roles.size() * model::kRoleRecordBytes);
+    ranger_ends[2] = ranger_ends[1] +
+        static_cast<std::uint32_t>(ranger.items.size() * model::kItemRecordBytes);
+    ranger_ends[3] = ranger_ends[2] +
+        static_cast<std::uint32_t>(ranger.scenes.size() * model::kSceneMetadataRecordBytes);
+    ranger_ends[4] = ranger_ends[3] +
+        static_cast<std::uint32_t>(ranger.magics.size() * model::kMagicRecordBytes);
+    ranger_ends[5] = ranger_ends[4] +
+        static_cast<std::uint32_t>(ranger.shops.size() * model::kShopRecordBytes);
+    const auto ranger_index = encode_index(ranger_ends);
     result = write_bytes(files.ranger_index, ranger_index);
     if (!result) {
         return result;

@@ -17,14 +17,21 @@ constexpr auto kBase64Alphabet = std::string_view{
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"};
 constexpr auto kMaximumEncodedBytes = std::size_t{64U * 1024U * 1024U};
 
-NODISCARD std::size_t archive_byte_count(const SceneArchiveKind kind) noexcept {
+NODISCARD std::size_t scene_byte_count(const SceneArchiveKind kind) noexcept {
     switch (kind) {
     case SceneArchiveKind::maps:
-        return model::kSceneCount * model::kSceneMapBytesPerScene;
+        return model::kSceneMapBytesPerScene;
     case SceneArchiveKind::events:
-        return model::kSceneCount * model::kSceneEventBytesPerScene;
+        return model::kSceneEventBytesPerScene;
     }
     return 0U;
+}
+
+// 场景存档长度须为单场景字节数的整数倍，场景数为1～kMaximumRecordCount。
+NODISCARD bool archive_size_valid(const std::uint64_t size, const SceneArchiveKind kind) noexcept {
+    const auto per_scene = scene_byte_count(kind);
+    return per_scene != 0U && size != 0U && size % per_scene == 0U &&
+        size / per_scene <= model::kMaximumRecordCount;
 }
 
 NODISCARD int base64_value(const char character) noexcept {
@@ -132,8 +139,7 @@ NODISCARD std::optional<std::vector<std::uint8_t>> decode_base64(
 
 std::optional<std::string> encode_scene_archive(
     const std::span<const std::uint8_t> bytes, const SceneArchiveKind kind) {
-    const auto expected_size = archive_byte_count(kind);
-    if (expected_size == 0U || bytes.size() != expected_size) {
+    if (!archive_size_valid(bytes.size(), kind)) {
         return std::nullopt;
     }
     const std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> context{
@@ -156,20 +162,17 @@ std::optional<std::string> encode_scene_archive(
 
 std::optional<std::vector<std::uint8_t>> decode_scene_archive(
     const std::string_view base64, const SceneArchiveKind kind) {
-    const auto expected_size = archive_byte_count(kind);
-    if (expected_size == 0U) {
-        return std::nullopt;
-    }
     const auto compressed = decode_base64(base64);
     if (!compressed.has_value()) {
         return std::nullopt;
     }
     ZSTD_FrameHeader header{};
     if (ZSTD_getFrameHeader(&header, compressed->data(), compressed->size()) != 0U ||
-        header.frameType != ZSTD_frame || header.frameContentSize != expected_size ||
+        header.frameType != ZSTD_frame || !archive_size_valid(header.frameContentSize, kind) ||
         header.checksumFlag != 1U || header.dictID != 0U) {
         return std::nullopt;
     }
+    const auto expected_size = static_cast<std::size_t>(header.frameContentSize);
     const auto frame_size = ZSTD_findFrameCompressedSize(compressed->data(), compressed->size());
     if (ZSTD_isError(frame_size) || frame_size != compressed->size()) {
         return std::nullopt;
