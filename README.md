@@ -219,8 +219,10 @@ fight_group = ['fmp000', 'fmp001']         # 战斗动画，原版 FIGHTnnn.GRP
   |---|---|---|
   | 最大生命 | +999 | `hp_cap_step` |
   | 最大内力 | +999 | `mp_cap_step` |
-  | 攻击 / 防御 | +100 | `attack_cap_step` / `defence_cap_step` |
-  | 用毒 / 抗毒 | +100 | `use_poison_cap_step` / `anti_poison_cap_step` |
+  | 攻击 | +100 | `attack_cap_step` |
+  | 防御 | +100 | `defence_cap_step` |
+  | 用毒 | +100 | `use_poison_cap_step` |
+  | 抗毒 | +100 | `anti_poison_cap_step` |
   | 暗器技巧 | +100 | `hidden_weapon_cap_step` |
   | 等级 | +30 | `role_level_step` |
   | 已学武功 | +10 级 | `martial_level_step` |
