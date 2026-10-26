@@ -16,9 +16,26 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
    | 文件 | 用途 |
    |---|---|
    | `openlegend.exe` | 游戏程序 |
-   | `openlegend.toml` | 设置文件，默认值即可运行 |
-   | `mods\original.toml` | 原版的 MOD 配置，开启多周目时使用，见下文“配置” |
+   | `openlegend.toml` | 界面与操作设置，并指定使用哪个 MOD 配置 |
+   | `mods\original.toml` | 原版的 MOD 配置：数据目录、存档目录、多周目设置 |
    | `mods\canglongzhuri.toml` | 苍龙逐日的 MOD 配置 |
+
+3. 在 `openlegend.toml` 中指定原版的 MOD 配置：
+
+   ```toml
+   [paths]
+   mod = './mods/original.toml'
+   ```
+
+4. 在 `mods/original.toml` 的 `[paths]` 中写明原版游戏目录和存档目录：
+
+   ```toml
+   [paths]
+   data_dir = 'D:\Games\金庸群侠传'
+   save_dir = './save/original'
+   ```
+
+5. 双击 `openlegend.exe` 运行。
 
 ### 配置
 
@@ -27,7 +44,7 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
 - `openlegend.toml`：放在 `openlegend.exe` 旁，只管界面与操作，并指定使用哪个 MOD 配置；
 - MOD 配置（如 `mods/original.toml`）：每套游戏数据（原版或 MOD）一个，写数据目录、存档目录、多周目、合战规则和资源文件名。
 
-两处的相对路径都以 `openlegend.exe` 所在目录为基准。最简单的用法是把解压出的文件复制到原版游戏目录直接运行：不指定 MOD 时数据目录为启动时的当前目录，存档写入数据目录，不开启多周目。
+两处的相对路径都以 `openlegend.exe` 所在目录为基准。
 
 #### openlegend.toml
 

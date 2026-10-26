@@ -317,16 +317,20 @@
         <tr><th>文件</th><th>用途</th></tr>
         <tr><td><code>openlegend.exe</code></td><td>游戏程序</td></tr>
         <tr><td><code>openlegend.toml</code></td><td>界面与操作设置，并指定使用哪个 MOD 配置</td></tr>
-        <tr><td><code>mods\original.toml</code></td><td>原版的 MOD 配置</td></tr>
+        <tr><td><code>mods\original.toml</code></td><td>原版的 MOD 配置：数据目录、存档目录、多周目设置</td></tr>
         <tr><td><code>mods\canglongzhuri.toml</code></td><td>苍龙逐日的 MOD 配置</td></tr>
       </table>
     </li>
-    <li>二选一：
-      <ul>
-        <li><span class="selected">放进原版目录</span>：把解压出的文件复制到原版游戏目录，双击 <code>openlegend.exe</code>。不指定 MOD 时数据为当前目录，存档写入数据目录，不开启多周目。</li>
-        <li><span class="selected">单独存放</span>：解压到任意目录，在 <code>openlegend.toml</code> 中写 <code>mod = './mods/original.toml'</code>，再在 <code>mods/original.toml</code> 的 <code>[paths]</code> 中写明原版目录。</li>
-      </ul>
+    <li>在 <code>openlegend.toml</code> 中指定原版的 MOD 配置：
+<pre>[paths]
+mod = './mods/original.toml'</pre>
     </li>
+    <li>在 <code>mods/original.toml</code> 的 <code>[paths]</code> 中写明原版游戏目录和存档目录：
+<pre>[paths]
+data_dir = 'D:\Games\金庸群侠传'
+save_dir = './save/original'</pre>
+    </li>
+    <li>双击 <code>openlegend.exe</code> 运行。</li>
   </ol>
 
   <h3>openlegend.toml</h3>
