@@ -94,10 +94,11 @@
   nav .links { margin-top: 12px; font-size: 13px; text-align: center; }
   nav .links a { display: inline; font-size: 13px; letter-spacing: 0; border: 0; padding: 0; }
 
+  /* 内容在整页居中：左右留出同样宽度，左侧固定目录不占位置、不推移内容。 */
   main {
-    max-width: 1240px;
+    max-width: calc(1240px + 2 * 196px);
     margin: 0 auto;
-    padding: 16px 16px 64px 200px;
+    padding: 16px 196px 64px;
   }
   header.box {
     margin: 0 0 24px;
