@@ -5,72 +5,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OpenLegend · 金庸群侠传</title>
 <style>
-  /* 配色取自原版 MMAP.COL 调色板：菜单标签、数值、选中项与对话框描边。 */
+  /* 整体取开场卷轴的感觉：宣纸底、墨色正文、朱红标题、赭石色小标题。 */
   :root {
-    --label: #de5900;
-    --label-shadow: #ff9510;
-    --value: #ca9914;
-    --value-shadow: #eeca28;
-    --selected: #bebebe;
-    --selected-shadow: #eeeeee;
-    --title: #b20408;
-    --title-shadow: #da1418;
-    --disabled: #6d6d6d;
-    --outline: #ffffff;
-    --panel: rgba(32, 38, 14, 0.72);
-    /* 地图配色：土路、草地。 */
-    --dirt: #aa8850;
-    --dirt-light: #b3945c;
-    --grass-light: #897e48;
-    --grass: #686836;
-    --grass-dark: #2e4517;
+    --paper: #efe3c4;
+    --paper-light: #f7eed6;
+    --paper-dark: #d9c79c;
+    --ink: #2a1f14;
+    --ink-light: #5a4a36;
+    --vermilion: #a8170f;
+    --ochre: #8a4a12;
+    --gold: #9a6a10;
+    --frame: #6b4a26;
+    --frame-light: #b08c5a;
+    --muted: #8a7a62;
   }
   * { box-sizing: border-box; }
   html { scroll-padding-top: 16px; }
   body {
     margin: 0;
-    color: var(--value);
-    /* 背景用游戏地图的土路与草地颜色（取自战场截图）。 */
+    color: var(--ink);
     background:
-      radial-gradient(ellipse 70% 55% at 18% 30%, var(--dirt-light) 0%, var(--dirt) 45%, transparent 75%),
-      radial-gradient(ellipse 60% 50% at 85% 75%, var(--dirt-light) 0%, var(--dirt) 40%, transparent 72%),
-      radial-gradient(ellipse 80% 60% at 70% 10%, var(--grass-light) 0%, transparent 70%),
-      linear-gradient(160deg, var(--grass-light) 0%, var(--grass) 55%, var(--grass-dark) 100%) fixed;
+      radial-gradient(ellipse at 50% 0%, var(--paper-light) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 100%, var(--paper-dark) 0%, transparent 70%),
+      var(--paper);
     background-attachment: fixed;
-    font: 17px/1.75 "Microsoft JhengHei", "PingFang TC", "Noto Sans CJK TC", "Microsoft YaHei", sans-serif;
-    text-shadow: 1px 0 var(--value-shadow);
+    font: 17px/1.8 "Microsoft JhengHei", "PingFang TC", "Noto Sans CJK TC", "Microsoft YaHei", sans-serif;
   }
-  a { color: var(--selected); text-shadow: 1px 0 var(--selected-shadow); }
-  a:hover { color: #fff; }
+  a { color: var(--vermilion); }
+  a:hover { color: var(--ochre); }
   code {
-    color: var(--selected);
-    text-shadow: none;
+    color: var(--ochre);
     font: 0.92em ui-monospace, Consolas, monospace;
   }
   pre {
     margin: 0.8em 0;
     padding: 12px 16px;
     overflow-x: auto;
-    border: 1px solid #555;
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.7);
-    color: var(--selected);
-    text-shadow: none;
+    border: 1px solid var(--frame-light);
+    border-radius: 4px;
+    background: #2a2118;
+    color: #eadcbc;
     font: 14px/1.55 ui-monospace, Consolas, monospace;
   }
-  pre .comment { color: var(--disabled); }
-  /* 原版圆角框：白色细描边、半透明深色底。 */
+  pre .comment { color: #a8946e; }
+  /* 框：褐色双线，与纸面同色略亮。 */
   .box {
-    border: 2px solid var(--outline);
-    border-radius: 12px;
-    background: var(--panel);
+    border: 3px double var(--frame);
+    border-radius: 6px;
+    background: rgba(255, 250, 235, 0.55);
+    box-shadow: 0 2px 10px rgba(80, 50, 20, 0.18);
   }
-  .label { color: var(--label); text-shadow: 1px 0 var(--label-shadow); }
-  .value { color: var(--value); text-shadow: 1px 0 var(--value-shadow); }
-  .selected { color: var(--selected); text-shadow: 1px 0 var(--selected-shadow); }
-  .red { color: var(--title); text-shadow: 1px 0 var(--title-shadow); }
+  .label { color: var(--ochre); }
+  .value { color: var(--gold); }
+  .selected { color: var(--ink); font-weight: bold; }
+  .red { color: var(--vermilion); }
 
-  /* 左侧竖排菜单，与游戏主菜单相同的选中框样式。 */
+  /* 左侧竖排目录。 */
   nav {
     position: fixed;
     top: 16px;
@@ -89,20 +79,17 @@
     display: block;
     margin: 4px 0;
     padding: 2px 10px;
-    border: 2px solid transparent;
-    border-radius: 10px;
-    color: var(--label);
-    text-shadow: 1px 0 var(--label-shadow);
+    border-left: 3px solid transparent;
+    color: var(--ink-light);
     text-decoration: none;
     font-size: 20px;
     letter-spacing: 0.15em;
   }
   nav a.current {
-    border-color: var(--outline);
-    color: var(--selected);
-    text-shadow: 1px 0 var(--selected-shadow);
+    border-left-color: var(--vermilion);
+    color: var(--vermilion);
   }
-  nav a:hover { color: var(--selected); }
+  nav a:hover { color: var(--vermilion); }
   nav .links { margin-top: 12px; font-size: 13px; text-align: center; }
   nav .links a { display: inline; font-size: 13px; letter-spacing: 0; border: 0; padding: 0; }
 
@@ -119,44 +106,44 @@
   }
   header h1 {
     margin: 0;
-    font-size: 40px;
+    font: bold 44px/1.3 "KaiTi", "STKaiti", "BiauKai", "DFKai-SB", serif;
     letter-spacing: 0.3em;
-    color: var(--title);
-    text-shadow: 2px 0 var(--title-shadow);
+    color: var(--vermilion);
   }
-  header p { margin: 4px 0 0; }
+  header p { margin: 4px 0 0; color: var(--ink-light); }
   section.box {
     margin: 0 0 24px;
     padding: 14px 26px 22px;
   }
   h2 {
     margin: 0 0 8px;
-    font-size: 28px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--frame-light);
+    font: bold 30px/1.4 "KaiTi", "STKaiti", "BiauKai", "DFKai-SB", serif;
     letter-spacing: 0.2em;
-    color: var(--value-shadow);
-    text-shadow: 1px 0 var(--value);
+    color: var(--vermilion);
   }
   h3 {
     margin: 22px 0 6px;
     font-size: 20px;
-    color: var(--label);
-    text-shadow: 1px 0 var(--label-shadow);
+    color: var(--ochre);
   }
   ul, ol { padding-left: 1.4em; }
   li { margin: 2px 0; }
+  li::marker { color: var(--ochre); }
   table {
     border-collapse: collapse;
     margin: 8px 0 12px;
   }
   th, td {
-    padding: 3px 14px 3px 0;
+    padding: 3px 14px;
     text-align: left;
     vertical-align: top;
+    border-bottom: 1px solid rgba(107, 74, 38, 0.25);
   }
   th {
-    color: var(--label);
-    text-shadow: 1px 0 var(--label-shadow);
-    font-weight: normal;
+    color: var(--ochre);
+    border-bottom: 1px solid var(--frame);
   }
   td.num, th.num { text-align: right; }
   .gallery {
@@ -169,8 +156,8 @@
   .gallery img {
     width: 100%;
     display: block;
-    border: 2px solid var(--outline);
-    border-radius: 10px;
+    border: 3px solid var(--frame);
+    border-radius: 4px;
     cursor: zoom-in;
   }
   /* 点击截图后全屏查看，再点一下或按 Esc 关闭。 */
@@ -181,19 +168,19 @@
     display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.88);
+    background: rgba(20, 14, 8, 0.9);
     cursor: zoom-out;
   }
   #viewer.open { display: flex; }
   #viewer img {
     max-width: 96vw;
     max-height: 94vh;
-    border: 2px solid var(--outline);
-    border-radius: 10px;
+    border: 3px solid var(--frame-light);
+    border-radius: 4px;
   }
-  .gallery figcaption { font-size: 14px; text-align: center; }
-  .note { color: var(--disabled); text-shadow: none; font-size: 15px; }
-  footer { text-align: center; font-size: 14px; color: var(--disabled); text-shadow: none; }
+  .gallery figcaption { font-size: 14px; text-align: center; color: var(--ink-light); }
+  .note { color: var(--muted); font-size: 15px; }
+  footer { text-align: center; font-size: 14px; color: var(--muted); }
   @media (max-width: 760px) {
     nav { position: static; width: auto; margin: 12px; }
     nav a { display: inline-block; font-size: 17px; }
