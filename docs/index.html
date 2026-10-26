@@ -17,14 +17,26 @@
     --title-shadow: #da1418;
     --disabled: #6d6d6d;
     --outline: #ffffff;
-    --panel: rgba(0, 0, 0, 0.62);
+    --panel: rgba(32, 38, 14, 0.72);
+    /* 地图配色：土路、草地。 */
+    --dirt: #aa8850;
+    --dirt-light: #b3945c;
+    --grass-light: #897e48;
+    --grass: #686836;
+    --grass-dark: #2e4517;
   }
   * { box-sizing: border-box; }
   html { scroll-padding-top: 16px; }
   body {
     margin: 0;
     color: var(--value);
-    background: #000 radial-gradient(ellipse at 50% 0%, #10204a 0%, #000 70%) fixed;
+    /* 背景用游戏地图的土路与草地颜色（取自战场截图）。 */
+    background:
+      radial-gradient(ellipse 70% 55% at 18% 30%, var(--dirt-light) 0%, var(--dirt) 45%, transparent 75%),
+      radial-gradient(ellipse 60% 50% at 85% 75%, var(--dirt-light) 0%, var(--dirt) 40%, transparent 72%),
+      radial-gradient(ellipse 80% 60% at 70% 10%, var(--grass-light) 0%, transparent 70%),
+      linear-gradient(160deg, var(--grass-light) 0%, var(--grass) 55%, var(--grass-dark) 100%) fixed;
+    background-attachment: fixed;
     font: 17px/1.75 "Microsoft JhengHei", "PingFang TC", "Noto Sans CJK TC", "Microsoft YaHei", sans-serif;
     text-shadow: 1px 0 var(--value-shadow);
   }
@@ -47,7 +59,7 @@
     font: 14px/1.55 ui-monospace, Consolas, monospace;
   }
   pre .comment { color: var(--disabled); }
-  /* 原版圆角框：白色细描边、半透明黑底。 */
+  /* 原版圆角框：白色细描边、半透明深色底。 */
   .box {
     border: 2px solid var(--outline);
     border-radius: 12px;
