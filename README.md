@@ -15,87 +15,130 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
    |---|---|
    | `openlegend.exe` | 游戏程序 |
    | `openlegend.toml` | 设置文件，默认值即可运行 |
-   | `mods\original.toml` | 原版的 MOD 配置，开启多周目时使用，见下文“运行 MOD” |
+   | `mods\original.toml` | 原版的 MOD 配置，开启多周目时使用，见下文“配置” |
    | `mods\canglongzhuri.toml` | 苍龙逐日的 MOD 配置 |
 
-### 指定数据与存档目录
+### 配置
 
-`openlegend.toml` 只指定使用哪个 MOD 配置，数据目录、存档目录都写在 MOD 配置中。二选一：
+配置分两个文件，修改后重启游戏生效：
 
-- **放进原版目录**：把解压出的文件复制到原版游戏目录，双击 `openlegend.exe`。不指定 MOD 时，数据目录为启动时的当前目录，存档写入数据目录，不开启多周目。
-- **单独存放**：解压到任意目录，在 `openlegend.toml` 中指定原版的 MOD 配置：
+- `openlegend.toml`：放在 `openlegend.exe` 旁，只管界面与操作，并指定使用哪个 MOD 配置；
+- MOD 配置（如 `mods/original.toml`）：每套游戏数据（原版或 MOD）一个，写数据目录、存档目录、多周目、合战规则和资源文件名。
 
-  ```toml
-  [paths]
-  mod = './mods/original.toml'
-  ```
+两处的相对路径都以 `openlegend.exe` 所在目录为基准。最简单的用法是把解压出的文件复制到原版游戏目录直接运行：不指定 MOD 时数据目录为启动时的当前目录，存档写入数据目录，不开启多周目。
 
-  并在 `mods/original.toml` 的 `[paths]` 中写明原版目录：
-
-  ```toml
-  [paths]
-  data_dir = 'D:\Games\金庸群侠传'
-  save_dir = './save/original'
-  ```
-
-数据目录为 MOD 配置的 `data_dir`，未写时为启动时的当前目录。存档目录为 MOD 配置的 `save_dir`，未写时为 `save/<MOD 配置文件名>`。相对路径以 `openlegend.exe` 所在目录为基准。
-
-### 常用设置
-
-界面与操作设置写在 `openlegend.toml` 中，修改后重启游戏生效，完整说明见 [`config/openlegend.example.toml`](config/openlegend.example.toml)。
-
-| 用途 | 写法 |
-|---|---|
-| 开启多周目 | 在 MOD 配置的 `[new_game_plus]` 下写 `enabled = true`，见“运行 MOD” |
-| 游戏画面大小 | `[display]` 下 `width`、`height` |
-| 窗口大小 | `[window]` 下 `width`、`height`、`maximized` |
-| 系统输入法输入姓名 | `[input]` 下 `name_entry = "modern"` |
-| 恢复原版逐格移动 | `[input]` 下 `smooth_movement = false` |
-| 世界地图按键 | `[input]` 下 `world_map_keys` |
-
-### 运行 MOD
-
-每套游戏数据（原版或 MOD）对应一个 MOD 配置文件，写明数据目录、存档目录、多周目设置；部分 MOD 修改了原程序 `Z.DAT` 中场景贴图、战场贴图、战斗动画的文件名表，也写在这里。在 `openlegend.toml` 中指定：
+#### openlegend.toml
 
 ```toml
 [paths]
-mod = './mods/canglongzhuri.toml'
+# 使用哪个 MOD 配置。不写时使用程序内置的原版设定（数据为启动目录，存档写入数据目录，
+# 不开启多周目、无合战规则）。本文件不接受 data_dir、save_dir、[new_game_plus]、[saves]。
+mod = './mods/original.toml'
+
+[logging]
+# 日志文件前缀，每次启动在其旁生成 PREFIX-日期-时间-PID.log；不写时为 logs/<exe 名>。
+# path = 'logs/openlegend.log'
+# 级别：trace、debug、info、warning、error、critical。
+level = 'info'
+
+[input]
+# 姓名输入方式："legacy" 为原版注音键盘，"modern" 为系统输入法；姓名画面按 F12 临时切换。
+name_entry = 'modern'
+# 平滑移动；false 恢复原版逐格移动，移动速度不变。
+smooth_movement = true
+# 按住方向键到开始连续移动的延迟（毫秒），0 为立即。
+movement_repeat_delay_ms = 200
+# 菜单按住方向键到开始连发的延迟，以及连发间隔（毫秒）。
+menu_repeat_delay_ms = 500
+menu_repeat_interval_ms = 55
+# 打开／关闭全屏世界地图的按键，可写多个：A～Z、0～9、Tab、F1～F10。
+world_map_keys = ['M', 'Tab']
+
+[timing]
+# 淡入淡出每帧的延迟（毫秒），原版 VGA 为 14.268，0 为不等待。
+fade_frame_delay_ms = 5
+
+[window]
+# 窗口还原时的大小，以及启动时是否最大化；画面保持宽高比，比例不同时留黑边。
+width = 960
+height = 600
+maximized = false
+
+[display]
+# 游戏画面的逻辑分辨率：scale 为 320×200 的倍数（1.0～4.0），优先于 width、height。
+# 调大后地图显示范围变大，地图格与人物的像素大小不变。
+scale = 2
+# 不用 scale 时直接写宽高（320～1280 × 200～800），两项须同时写。
+# width = 640
+# height = 400
 ```
 
-未指定 `mod` 时使用程序内置的原版设定。MOD 配置文件格式：
+#### MOD 配置
 
 ```toml
-format = 1                  # 格式版本，必须为 1
-name = "苍龙逐日"            # MOD 名称，显示在窗口标题并写入日志
+format = 1                       # 格式版本，必须为 1
+name = '金庸群侠传（原版）'       # 显示在窗口标题，并写入日志
 
-[paths]                     # 可选，数据目录与存档目录
-data_dir = 'E:\Game\canglongzhuri'
-save_dir = './save/canglongzhuri'
+[paths]
+# 原版或 MOD 的数据目录；不写时为启动时的当前目录。
+data_dir = 'D:\Games\金庸群侠传'
+# 存档目录；不写时为 save/<本文件名去掉扩展名>，不同 MOD 的存档自然分开。
+save_dir = './save/original'
 
-[new_game_plus]             # 可选，多周目设置；未写时不开启
+[new_game_plus]
+# 多周目开关；不写这一节时不开启。开启后存档为 TOML，通关后可在标题选 New Game+。
 enabled = true
+# 最大周目序号。
+maximum_playthroughs = 999
+# 敌人每多一个周目增加的量：最大生命、最大内力、攻击、防御、用毒、抗毒、暗器、等级。
+hp_cap_step = 999
+mp_cap_step = 999
+attack_cap_step = 100
+defence_cap_step = 100
+use_poison_cap_step = 100
+anti_poison_cap_step = 100
+hidden_weapon_cap_step = 100
+role_level_step = 30
+# 敌人已学武功每周目增加的等级（1 级 = 100 熟练度）。
+martial_level_step = 10
+# 战斗经验倍率（%）：第 2 周目，以及之后每周目再加的百分点（250%、350%……）。
+battle_experience_percent_ng2 = 150
+battle_experience_percent_step = 100
 
-[[merge]]                   # 可选，合战规则，见下文“合战规则”
-battle = 134
-merge_battle = 133
+# 合战规则，可写多条，按顺序取第一条满足条件的。
+# 剧情开战 battle 时，若满足条件，先播放 dialogues，再把 merge_battle 的敌人并入本战。
+[[merge]]
+battle = 134                     # 触发的战斗编号（WAR.STA）
+merge_battle = 133               # 要并入敌人的战斗编号
+new_game_plus_only = true        # 只在开启多周目时生效
+role = 0                         # 检查道德的角色编号，0 为主角
+morality_min = 0                 # 道德下限（含）
+morality_max = 0                 # 道德上限（含）
+# 开战前插播的对白：[对白编号, 头像编号, 样式]，样式 0 为对方说话、1 为主角说话。
+dialogues = [[2919, 67, 0], [2920, 71, 0], [2921, 0, 1]]
 
-[files]                     # 可选，按编号取用的文件名表，第 n 项为编号 n 的文件名
-scene_sprite_index = ["sdx", "sdx", ...]
-fight_index = ["fdx000", "fdx001", ...]
+# 这条规则依赖的资源文件（相对 data_dir）及 SHA-256，必填；任一不符时只停用这一条。
+[merge.assets]
+'KDEF.GRP' = '135c5e09…'
+'TALK.GRP' = '5cde1186…'
+'WAR.STA' = '98e3f669…'
+
+[saves]
+# 程序自动写入：上次使用的存档槽，不需要手写。
+last_slot = 0
+
+[files]
+# 按编号打开的资源文件名表，第 n 项为编号 n 的文件名（相对 data_dir），只有改过
+# Z.DAT 文件名表的 MOD 才需要；不写的表使用原版命名，编号超出所列项数时报错。
+scene_sprite_index = ['sdx', 'sdx']        # 场景贴图索引，原版 SDXnnn
+scene_sprite_group = ['smp', 'smp']        # 场景贴图，原版 SMPnnn
+battlefield_index = ['wdx', 'wdx']         # 战场贴图索引，原版 WDXnnn
+battlefield_group = ['wmp', 'wmp']         # 战场贴图，原版 WMPnnn
+fight_index = ['fdx000', 'fdx001']         # 战斗动画索引，原版 FIGHTnnn.IDX
+fight_group = ['fmp000', 'fmp001']         # 战斗动画，原版 FIGHTnnn.GRP
 ```
 
-| `[files]` 字段 | 内容 | 原版命名 |
-|---|---|---|
-| `scene_sprite_index` / `scene_sprite_group` | 场景贴图索引 / 贴图 | `SDXnnn` / `SMPnnn` |
-| `battlefield_index` / `battlefield_group` | 战场贴图索引 / 贴图 | `WDXnnn` / `WMPnnn` |
-| `fight_index` / `fight_group` | 战斗动画索引 / 动画 | `FIGHTnnn.IDX` / `FIGHTnnn.GRP` |
-
-- 未写 `save_dir` 时存档放在 `save/<MOD 配置文件名>`，不同 MOD 的存档默认分开；上次使用的存档槽由程序记在 MOD 配置的 `[saves]` 中；
-- 未列出的文件名表使用原版命名，出现未知字段或取值不合法时启动报错；
-- `[new_game_plus]` 的字段与默认值见 [`config/mods/original.toml`](config/mods/original.toml)，不同 MOD 可以分别设置；
-- `openlegend.toml` 中不能再写 `data_dir`、`save_dir`、`[new_game_plus]`、`[saves]`，写了会在启动时报错；
-- 已整理的配置见 [`config/mods/`](config/mods/)：原版 `original.toml`，苍龙逐日 `canglongzhuri.toml`（`[files]` 取自其 `Z.DAT`）；
-- 人物、物品、场景等记录数量和对话条数按数据文件读取；MOD 在 `Z.DAT` 中修改的战斗、成长等规则不生效，游戏按本项目的规则运行。
+除 `format`、`name` 外各节都可省略；出现未知字段或取值不合法时启动报错。现成的配置见 [`config/mods/`](config/mods/)：原版 [`original.toml`](config/mods/original.toml)，苍龙逐日 [`canglongzhuri.toml`](config/mods/canglongzhuri.toml)（`[files]` 取自其 `Z.DAT`）。人物、物品、场景等记录数量和对话条数按数据文件读取；MOD 在 `Z.DAT` 中修改的战斗、成长等规则不生效，游戏按本项目的规则运行。
 
 ### 日志
 
