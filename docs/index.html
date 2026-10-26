@@ -5,99 +5,99 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OpenLegend · 金庸群侠传</title>
 <style>
-  /* 整体取开场卷轴的感觉：宣纸底、墨色正文、朱红标题、赭石色小标题。 */
+  /* 文字颜色与游戏 render::legacy_color::text 相同，取自 MMAP.COL：前景色加右侧阴影色，
+     阴影右移字高的 1/16（rgba_font_renderer）。框与游戏 draw_box 相同：纯黑底透明度 96/255，
+     白色描边内缩 1 单位，转角为阶梯像素；1 单位 = 2px。 */
   :root {
-    --paper: #efe3c4;
-    --paper-light: #f7eed6;
-    --paper-dark: #d9c79c;
-    --ink: #2a1f14;
-    --ink-light: #5a4a36;
-    --vermilion: #a8170f;
-    --ochre: #8a4a12;
-    --gold: #9a6a10;
-    --frame: #6b4a26;
-    --frame-light: #b08c5a;
-    --muted: #8a7a62;
-    /* 文字颜色沿用原版 MMAP.COL 的色相（标签橙、数值黄、标题红），按浅色纸面调深。 */
-    --label: #c04a00;
-    --value: #8c6400;
-    --title: #b20408;
+    --label: #de5900;          /* menu_normal 0x23 */
+    --label-shadow: #ff9510;   /* menu_normal 0x21 */
+    --value: #ca9914;          /* notice 0x07 */
+    --value-shadow: #eeca28;   /* notice 0x05 */
+    --selected: #bebebe;       /* selected 0x66 */
+    --selected-shadow: #eeeeee;/* selected 0x63 */
+    --title: #b20408;          /* normal 0x17 */
+    --title-shadow: #da1418;   /* normal 0x15 */
+    --disabled: #6d6d6d;       /* disabled 0x6B */
+    --disabled-shadow: #9d9d9d;/* disabled 0x68 */
+    --shadow: 0.0625em 0 0;
+    --unit: 2px;
+    --box: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' shape-rendering='crispEdges'%3E%3Cg fill='%23000' fill-opacity='0.376'%3E%3Crect x='5' y='0' width='3' height='1'/%3E%3Crect x='4' y='1' width='5' height='1'/%3E%3Crect x='3' y='2' width='7' height='1'/%3E%3Crect x='2' y='3' width='9' height='1'/%3E%3Crect x='1' y='4' width='11' height='1'/%3E%3Crect x='0' y='5' width='13' height='3'/%3E%3Crect x='1' y='8' width='11' height='1'/%3E%3Crect x='2' y='9' width='9' height='1'/%3E%3Crect x='3' y='10' width='7' height='1'/%3E%3Crect x='4' y='11' width='5' height='1'/%3E%3Crect x='5' y='12' width='3' height='1'/%3E%3C/g%3E%3Cg fill='%23fff'%3E%3Crect x='5' y='1' width='3' height='1'/%3E%3Crect x='4' y='2' width='1' height='2'/%3E%3Crect x='8' y='2' width='1' height='2'/%3E%3Crect x='2' y='4' width='2' height='1'/%3E%3Crect x='9' y='4' width='2' height='1'/%3E%3Crect x='1' y='5' width='1' height='3'/%3E%3Crect x='11' y='5' width='1' height='3'/%3E%3Crect x='2' y='8' width='2' height='1'/%3E%3Crect x='9' y='8' width='2' height='1'/%3E%3Crect x='4' y='9' width='1' height='2'/%3E%3Crect x='8' y='9' width='1' height='2'/%3E%3Crect x='5' y='11' width='3' height='1'/%3E%3C/g%3E%3C/svg%3E");
+    --box-outline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' shape-rendering='crispEdges'%3E%3Cg fill='%23fff'%3E%3Crect x='5' y='1' width='3' height='1'/%3E%3Crect x='4' y='2' width='1' height='2'/%3E%3Crect x='8' y='2' width='1' height='2'/%3E%3Crect x='2' y='4' width='2' height='1'/%3E%3Crect x='9' y='4' width='2' height='1'/%3E%3Crect x='1' y='5' width='1' height='3'/%3E%3Crect x='11' y='5' width='1' height='3'/%3E%3Crect x='2' y='8' width='2' height='1'/%3E%3Crect x='9' y='8' width='2' height='1'/%3E%3Crect x='4' y='9' width='1' height='2'/%3E%3Crect x='8' y='9' width='1' height='2'/%3E%3Crect x='5' y='11' width='3' height='1'/%3E%3C/g%3E%3C/svg%3E");
   }
   * { box-sizing: border-box; }
   html { scroll-padding-top: 16px; }
   body {
     margin: 0;
-    color: var(--ink);
-    background:
-      radial-gradient(ellipse at 50% 0%, var(--paper-light) 0%, transparent 60%),
-      radial-gradient(ellipse at 50% 100%, var(--paper-dark) 0%, transparent 70%),
-      var(--paper);
-    background-attachment: fixed;
-    font: 17px/1.8 "Microsoft JhengHei", "PingFang TC", "Noto Sans CJK TC", "Microsoft YaHei", sans-serif;
-  }
-  a { color: var(--label); }
-  a:hover { color: var(--title); }
-  code {
     color: var(--label);
+    /* 底色取游戏场景的暗褐色调，内容框与游戏界面相同：白色圆角描边的半透明深色框。 */
+    background:
+      radial-gradient(ellipse 80% 60% at 30% 20%, #5a3a1a 0%, transparent 70%),
+      radial-gradient(ellipse 70% 60% at 80% 80%, #4a2e14 0%, transparent 70%),
+      #24150a;
+    background-attachment: fixed;
+    font: 17px/1.75 "Microsoft JhengHei", "PingFang TC", "Noto Sans CJK TC", "Microsoft YaHei", sans-serif;
+    text-shadow: var(--shadow) var(--label-shadow);
+  }
+  a { color: var(--selected); text-shadow: var(--shadow) var(--selected-shadow); }
+  a:hover { color: var(--selected-shadow); }
+  code {
+    color: var(--selected);
+    text-shadow: var(--shadow) var(--selected-shadow);
     font: 0.92em ui-monospace, Consolas, monospace;
   }
   pre {
     margin: 0.8em 0;
-    padding: 12px 16px;
+    padding: 2px 6px;
     overflow-x: auto;
-    border: 1px solid var(--frame-light);
-    border-radius: 4px;
-    background: #2a2118;
-    color: #eadcbc;
-    text-shadow: none;
+    border: calc(6 * var(--unit)) solid transparent;
+    border-image: var(--box) 6 fill / calc(6 * var(--unit)) stretch;
+    color: var(--selected);
+    text-shadow: var(--shadow) var(--selected-shadow);
     font: 14px/1.55 ui-monospace, Consolas, monospace;
   }
-  pre .comment { color: #a8946e; }
-  /* 框：褐色双线，与纸面同色略亮。 */
+  pre .comment { color: var(--disabled); text-shadow: var(--shadow) var(--disabled-shadow); }
   .box {
-    border: 3px double var(--frame);
-    border-radius: 6px;
-    background: rgba(255, 250, 235, 0.55);
-    box-shadow: 0 2px 10px rgba(80, 50, 20, 0.18);
+    border: calc(6 * var(--unit)) solid transparent;
+    border-image: var(--box) 6 fill / calc(6 * var(--unit)) stretch;
   }
-  .label { color: var(--label); }
-  .value { color: var(--value); }
-  .selected { color: var(--ink); font-weight: bold; }
-  .red { color: var(--title); }
+  .label { color: var(--label); text-shadow: var(--shadow) var(--label-shadow); }
+  .value { color: var(--value); text-shadow: var(--shadow) var(--value-shadow); }
+  .selected { color: var(--selected); text-shadow: var(--shadow) var(--selected-shadow); }
+  .red { color: var(--title); text-shadow: var(--shadow) var(--title-shadow); }
 
-  /* 左侧竖排目录。 */
+  /* 左侧竖排菜单，与游戏主菜单相同的选中框样式。 */
   nav {
     position: fixed;
     top: 16px;
     left: 16px;
-    width: 148px;
-    padding: 12px 10px;
+    width: 160px;
+    padding: 0 4px;
     z-index: 10;
   }
   nav .game {
     margin: 0 0 10px;
     text-align: center;
-    font: bold 22px/1.4 "KaiTi", "STKaiti", "BiauKai", "DFKai-SB", serif;
-    letter-spacing: 0.05em;
+    font-size: 15px;
+    line-height: 1.4;
   }
   nav a {
     display: block;
-    margin: 4px 0;
-    padding: 2px 10px;
-    border: 2px solid transparent;
-    border-radius: 10px;
+    margin: 0;
+    padding: 0 4px;
+    border: calc(6 * var(--unit)) solid transparent;
     color: var(--label);
+    text-shadow: var(--shadow) var(--label-shadow);
     text-decoration: none;
     font-size: 20px;
     letter-spacing: 0.15em;
   }
-  /* 与游戏菜单相同：选中项加圆角框；浅色纸面上框与文字用深色。 */
+  /* 与游戏选中页签相同：选中项加原版圆角框。 */
   nav a.current {
-    border-color: var(--frame);
-    background: rgba(255, 250, 235, 0.7);
-    color: var(--ink);
+    border-image: var(--box) 6 fill / calc(6 * var(--unit)) stretch;
+    color: var(--selected);
+    text-shadow: var(--shadow) var(--selected-shadow);
   }
-  nav a:hover { color: var(--title); }
+  nav a:hover { color: var(--selected); text-shadow: var(--shadow) var(--selected-shadow); }
   nav .links { margin-top: 12px; font-size: 13px; text-align: center; }
   nav .links a { display: inline; font-size: 13px; letter-spacing: 0; border: 0; padding: 0; }
 
@@ -109,50 +109,49 @@
   }
   header.box {
     margin: 0 0 24px;
-    padding: 18px 24px;
+    padding: 6px 12px;
     text-align: center;
   }
   header h1 {
     margin: 0;
-    font: bold 44px/1.3 "KaiTi", "STKaiti", "BiauKai", "DFKai-SB", serif;
+    font-size: 40px;
     letter-spacing: 0.3em;
     color: var(--title);
-    text-shadow: 2px 2px 0 rgba(120, 20, 10, 0.18);
+    text-shadow: var(--shadow) var(--title-shadow);
   }
-  header p { margin: 4px 0 0; color: var(--ink-light); }
+  header p { margin: 4px 0 0; }
   section.box {
     margin: 0 0 24px;
-    padding: 14px 26px 22px;
+    padding: 2px 14px 10px;
   }
   h2 {
     margin: 0 0 8px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--frame-light);
-    font: bold 30px/1.4 "KaiTi", "STKaiti", "BiauKai", "DFKai-SB", serif;
+    font-size: 28px;
     letter-spacing: 0.2em;
-    color: var(--value);
+    color: var(--selected);
+    text-shadow: var(--shadow) var(--selected-shadow);
   }
   h3 {
     margin: 22px 0 6px;
     font-size: 20px;
-    color: var(--label);
+    color: var(--value);
+    text-shadow: var(--shadow) var(--value-shadow);
   }
   ul, ol { padding-left: 1.4em; }
   li { margin: 2px 0; }
-  li::marker { color: var(--ochre); }
   table {
     border-collapse: collapse;
     margin: 8px 0 12px;
   }
   th, td {
-    padding: 3px 14px;
+    padding: 3px 14px 3px 0;
     text-align: left;
     vertical-align: top;
-    border-bottom: 1px solid rgba(107, 74, 38, 0.25);
   }
   th {
-    color: var(--label);
-    border-bottom: 1px solid var(--frame);
+    color: var(--value);
+    text-shadow: var(--shadow) var(--value-shadow);
+    font-weight: normal;
   }
   td.num, th.num { text-align: right; }
   .gallery {
@@ -165,8 +164,8 @@
   .gallery img {
     width: 100%;
     display: block;
-    border: 3px solid var(--frame);
-    border-radius: 4px;
+    border: 2px solid #ffffff;
+    border-radius: 10px;
     cursor: zoom-in;
   }
   /* 点击截图后全屏查看，再点一下或按 Esc 关闭。 */
@@ -177,19 +176,19 @@
     display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(20, 14, 8, 0.9);
+    background: rgba(0, 0, 0, 0.88);
     cursor: zoom-out;
   }
   #viewer.open { display: flex; }
   #viewer img {
     max-width: 96vw;
     max-height: 94vh;
-    border: 3px solid var(--frame-light);
-    border-radius: 4px;
+    border: 2px solid #ffffff;
+    border-radius: 10px;
   }
-  .gallery figcaption { font-size: 14px; text-align: center; color: var(--ink-light); }
-  .note { color: var(--muted); font-size: 15px; }
-  footer { text-align: center; font-size: 14px; color: var(--muted); }
+  .gallery figcaption { font-size: 14px; text-align: center; }
+  .note { color: var(--disabled); text-shadow: var(--shadow) var(--disabled-shadow); font-size: 15px; }
+  footer { text-align: center; font-size: 14px; color: var(--disabled); text-shadow: var(--shadow) var(--disabled-shadow); }
   @media (max-width: 760px) {
     nav { position: static; width: auto; margin: 12px; }
     nav a { display: inline-block; font-size: 17px; }
