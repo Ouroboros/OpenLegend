@@ -75,6 +75,28 @@ public:
         output.write(text.data(), static_cast<std::streamsize>(text.size()));
     }
 
+    NODISCARD std::filesystem::path program_configuration_path() const {
+        return executable_directory_ / openlegend::app::kDefaultConfigurationFilename;
+    }
+
+    void write_program_configuration(const std::string_view text) const {
+        std::ofstream output{program_configuration_path(), std::ios::binary | std::ios::trunc};
+        output.write(text.data(), static_cast<std::streamsize>(text.size()));
+    }
+
+    NODISCARD std::filesystem::path mod_path(
+        const std::string_view name = "original.toml") const {
+        return executable_directory_ / "mods" / openlegend::app::path_from_utf8(name);
+    }
+
+    void write_mod_configuration(const std::string_view text,
+        const std::string_view name = "original.toml") const {
+        const auto path = mod_path(name);
+        std::filesystem::create_directories(path.parent_path());
+        std::ofstream output{path, std::ios::binary | std::ios::trunc};
+        output << "format = 1\nname = 'test'\n" << text;
+    }
+
 private:
     NODISCARD static std::filesystem::path path_from_literal(const std::u8string_view text) {
         return std::filesystem::path{std::u8string{text}};
@@ -93,6 +115,22 @@ NODISCARD std::string utf8_bytes(const std::filesystem::path& path) {
     return std::string{
         reinterpret_cast<const char*>(text.data()),
         reinterpret_cast<const char*>(text.data() + text.size())};
+}
+
+NODISCARD std::string file_text(const std::filesystem::path& path) {
+    std::ifstream input{path, std::ios::binary};
+    return {std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+}
+
+NODISCARD openlegend::app::RuntimeConfiguration load_configuration(const TemporaryTree& tree) {
+    using namespace openlegend::app;
+    return load_runtime_configuration({}, tree.configuration_path(), tree.executable_directory(),
+        tree.launch_directory(), RuntimeConfigurationDefaults{
+            tree.executable_directory() / "logs" / "openlegend.log",
+            openlegend::diagnostics::LogLevel::info, WindowSize{960, 600},
+            std::chrono::milliseconds{500}, std::chrono::milliseconds{500},
+            std::chrono::milliseconds{55}, std::chrono::milliseconds{14},
+            GameResolution{320, 200}});
 }
 
 void test_missing_configuration_uses_launch_directory() {
@@ -147,10 +185,12 @@ void test_runtime_configuration_root() {
         tree.configured_directory(), tree.executable_directory());
     const auto relative_save = std::filesystem::relative(
         tree.save_directory(), tree.executable_directory());
-    tree.write_configuration(
+    tree.write_mod_configuration(
         "[paths]\n"
         "data_dir = '" + utf8_bytes(relative_data) + "'\n"
-        "save_dir = '" + utf8_bytes(relative_save) + "'\n"
+        "save_dir = '" + utf8_bytes(relative_save) + "'\n");
+    tree.write_configuration(
+        "[paths]\nmod = 'mods/original.toml'\n"
         "\n[logging]\n"
         "path = 'diagnostics/runtime.log'\n"
         "level = 'debug'\n"
@@ -188,7 +228,7 @@ void test_runtime_configuration_root() {
 
     OL_CHECK(configuration.paths.data_directory.status == DataDirectoryStatus::ready);
     OL_CHECK(configuration.paths.data_directory.source ==
-        DataDirectorySource::configuration_file);
+        DataDirectorySource::mod_configuration);
     OL_CHECK(configuration.paths.data_directory.directory ==
         std::filesystem::absolute(tree.configured_directory()));
     OL_CHECK(configuration.paths.save_directory.status ==
@@ -451,54 +491,35 @@ void test_input_configuration() {
 
 void test_save_directory_configuration() {
     using namespace openlegend::app;
-    using openlegend::diagnostics::LogLevel;
     const TemporaryTree tree;
-    const auto load = [&tree]() {
-        return load_runtime_configuration(
-            {},
-            tree.configuration_path(),
-            tree.executable_directory(),
-            tree.launch_directory(),
-            RuntimeConfigurationDefaults{
-                tree.executable_directory() / "logs" / "openlegend.log",
-                LogLevel::info,
-                WindowSize{960, 600},
-                std::chrono::milliseconds{500},
-                std::chrono::milliseconds{500},
-                std::chrono::milliseconds{55},
-                std::chrono::milliseconds{14},
-                GameResolution{320, 200}});
-    };
-
-    const auto missing = load();
-    OL_CHECK(missing.paths.save_directory.status ==
-        SaveDirectoryConfigurationStatus::ready);
+    const auto missing = load_configuration(tree);
+    OL_CHECK(missing.paths.save_directory.status == SaveDirectoryConfigurationStatus::ready);
     OL_CHECK(!missing.paths.save_directory.configured);
     OL_CHECK(missing.paths.save_directory.directory.empty());
 
     const auto relative_save = std::filesystem::relative(
         tree.save_directory(), tree.executable_directory());
-    tree.write_configuration(
-        "[paths]\n"
-        "save_dir = '" + utf8_bytes(relative_save) + "'\n");
-    const auto configured = load();
-    OL_CHECK(configured.paths.save_directory.status ==
-        SaveDirectoryConfigurationStatus::ready);
+    tree.write_configuration("[paths]\nmod = 'mods/original.toml'\n");
+    tree.write_mod_configuration("[paths]\nsave_dir = '" + utf8_bytes(relative_save) + "'\n");
+    const auto configured = load_configuration(tree);
+    OL_CHECK(configured.paths.mod.error.empty());
+    OL_CHECK(configured.paths.save_directory.status == SaveDirectoryConfigurationStatus::ready);
     OL_CHECK(configured.paths.save_directory.configured);
+    OL_CHECK(configured.paths.save_directory.from_mod);
     OL_CHECK(configured.paths.save_directory.directory ==
         std::filesystem::absolute(tree.save_directory()));
 
-    tree.write_configuration("[paths]\nsave_dir = 7\n");
-    OL_CHECK(load().paths.save_directory.status ==
-        SaveDirectoryConfigurationStatus::invalid_save_directory);
-
-    tree.write_configuration("[paths]\nsave_dir = ''\n");
-    OL_CHECK(load().paths.save_directory.status ==
-        SaveDirectoryConfigurationStatus::invalid_save_directory);
-
+    tree.write_mod_configuration("");
+    OL_CHECK(load_configuration(tree).paths.save_directory.directory ==
+        tree.executable_directory() / "save" / "original");
+    tree.write_mod_configuration("[paths]\nsave_dir = 7\n");
+    OL_CHECK(!load_configuration(tree).paths.mod.error.empty());
+    tree.write_mod_configuration("[paths]\nsave_dir = ''\n");
+    OL_CHECK(!load_configuration(tree).paths.mod.error.empty());
+    tree.write_configuration("[paths]\nsave_dir = 'old-location'\n");
+    OL_CHECK(!load_configuration(tree).paths.mod.error.empty());
     tree.write_configuration("paths = 7\n");
-    OL_CHECK(load().paths.save_directory.status ==
-        SaveDirectoryConfigurationStatus::invalid_paths_table);
+    OL_CHECK(!load_configuration(tree).paths.mod.error.empty());
 }
 
 void test_logging_configuration() {
@@ -644,95 +665,130 @@ void test_window_errors_and_schema_writeback() {
     OL_CHECK(load_window_configuration(tree.configuration_path(), fallback).status ==
         WindowConfigurationStatus::invalid_window_state);
 
-    const auto relative_data = std::filesystem::relative(
-        tree.configured_directory(), tree.executable_directory());
-    const auto relative_save = std::filesystem::relative(
-        tree.save_directory(), tree.executable_directory());
-    tree.write_configuration(
+    const auto user_text = file_text(tree.configuration_path());
+    tree.write_program_configuration(
         "[future]\nkept = 42\n"
-        "\n[window]\ncustom = 'preserved'\n"
-        "\n[display]\nheight = 360\n"
-        "scale = 1.5\n"
-        "custom = 'discarded'\n"
-        "width = 640\n"
-        "\n[input]\nmenu_repeat_interval_ms = 55\n"
-        "custom = 'discarded'\n"
-        "name_entry = 'modern'\n"
-        "smooth_movement = true\n"
-        "movement_repeat_delay_ms = 500\n"
-        "menu_repeat_delay_ms = 500\n"
-        "\n[paths]\ndata_dir = '" + utf8_bytes(relative_data) + "'\n"
-        "save_dir = '" + utf8_bytes(relative_save) + "'\n");
+        "[window]\ncustom = 'preserved'\n"
+        "[display]\nscale = 1.5\nwidth = 640\nheight = 360\n");
+    const auto program_path = tree.program_configuration_path();
     std::string detail;
-    OL_CHECK(save_window_configuration(
-                 tree.configuration_path(), WindowSize{1024, 640}, true, detail) ==
+    OL_CHECK(save_window_configuration(program_path, {1024, 640}, true, detail) ==
         WindowConfigurationStatus::ready);
     OL_CHECK(detail.empty());
-    const auto window = load_window_configuration(tree.configuration_path(), fallback);
+    const auto window = load_window_configuration(program_path, fallback);
     OL_CHECK((window.size == WindowSize{1024, 640}));
     OL_CHECK(window.maximized);
-    const auto paths = resolve_data_directory(
-        {}, tree.executable_directory(), tree.launch_directory());
-    OL_CHECK(paths.directory == std::filesystem::absolute(tree.configured_directory()));
-    const auto display = load_display_configuration(tree.configuration_path());
-    OL_CHECK(display.status == DisplayConfigurationStatus::ready);
+    const auto display = load_display_configuration(program_path);
     OL_CHECK(display.scale == 1.5);
     OL_CHECK(display.width == 640);
     OL_CHECK(display.height == 360);
+    const auto saved = file_text(program_path);
+    OL_CHECK(saved.find("preserved") != std::string::npos);
+    OL_CHECK(saved.find("kept = 42") != std::string::npos);
+    OL_CHECK(file_text(tree.configuration_path()) == user_text);
 
-    std::ifstream input{tree.configuration_path(), std::ios::binary};
-    const std::string saved{
-        std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
-    const auto paths_position = saved.find("[paths]");
-    const auto input_position = saved.find("[input]");
-    const auto window_position = saved.find("[window]");
-    const auto display_position = saved.find("[display]");
-    OL_CHECK(paths_position != std::string::npos);
-    OL_CHECK(input_position != std::string::npos);
-    OL_CHECK(window_position != std::string::npos);
-    OL_CHECK(display_position != std::string::npos);
-    OL_CHECK(paths_position < input_position);
-    OL_CHECK(input_position < window_position);
-    OL_CHECK(window_position < display_position);
-    const auto data_directory_position = saved.find("data_dir = ", paths_position);
-    const auto save_directory_position = saved.find("save_dir = ", paths_position);
-    OL_CHECK(data_directory_position < save_directory_position);
-    OL_CHECK(save_directory_position < input_position);
-    const auto name_input_position =
-        saved.find("name_entry = ", input_position);
-    const auto smooth_movement_position =
-        saved.find("smooth_movement = true", input_position);
-    const auto movement_delay_position =
-        saved.find("movement_repeat_delay_ms = 500", input_position);
-    const auto menu_delay_position =
-        saved.find("menu_repeat_delay_ms = 500", input_position);
-    const auto menu_interval_position =
-        saved.find("menu_repeat_interval_ms = 55", input_position);
-    OL_CHECK(name_input_position < smooth_movement_position);
-    OL_CHECK(smooth_movement_position < movement_delay_position);
-    OL_CHECK(movement_delay_position < menu_delay_position);
-    OL_CHECK(menu_delay_position < menu_interval_position);
-    OL_CHECK(menu_interval_position < window_position);
-    const auto width_position = saved.find("width = 1024", window_position);
-    const auto height_position = saved.find("height = 640", window_position);
-    const auto maximized_position = saved.find("maximized = true", window_position);
-    OL_CHECK(width_position < height_position);
-    OL_CHECK(height_position < maximized_position);
-    const auto display_scale_position =
-        saved.find("scale = 1.5", display_position);
-    const auto display_width_position =
-        saved.find("width = 640", display_position);
-    const auto display_height_position =
-        saved.find("height = 360", display_position);
-    OL_CHECK(display_scale_position < display_width_position);
-    OL_CHECK(display_width_position < display_height_position);
-    OL_CHECK(saved.find("custom = ") == std::string::npos);
-    OL_CHECK(saved.find("[future]") == std::string::npos);
-    OL_CHECK(saved.find("kept = 42") == std::string::npos);
-
-    OL_CHECK(save_window_configuration(
-                 tree.configuration_path(), WindowSize{0, 600}, false, detail) ==
+    const auto stamp = std::filesystem::last_write_time(program_path) - std::chrono::hours{24};
+    std::filesystem::last_write_time(program_path, stamp);
+    const auto unchanged_stamp = std::filesystem::last_write_time(program_path);
+    OL_CHECK(save_window_configuration(program_path, {1024, 640}, true, detail) ==
+        WindowConfigurationStatus::ready);
+    OL_CHECK(std::filesystem::last_write_time(program_path) == unchanged_stamp);
+    OL_CHECK(save_window_configuration(program_path, {0, 600}, false, detail) ==
         WindowConfigurationStatus::invalid_window_size);
+
+    tree.write_program_configuration("[window\n");
+    const auto corrupt = file_text(program_path);
+    OL_CHECK(save_window_configuration(program_path, {1024, 640}, true, detail) ==
+        WindowConfigurationStatus::parse_failed);
+    OL_CHECK(file_text(program_path) == corrupt);
+}
+
+void test_layered_configuration_and_user_preservation() {
+    using namespace openlegend::app;
+    const TemporaryTree tree;
+    const std::string user = "# user comments stay here\n[window]\nwidth = 800\n"
+        "[input]\nname_entry = 'modern'\n";
+    tree.write_configuration(user);
+    tree.write_program_configuration("[window]\nwidth = 1024\nheight = 640\nmaximized = true\n"
+        "[input]\nsmooth_movement = false\n[display]\nscale = 1.5\n");
+    auto configuration = load_configuration(tree);
+    OL_CHECK(configuration.program_configuration_path == tree.program_configuration_path());
+    OL_CHECK((configuration.window.size == WindowSize{800, 640}));
+    OL_CHECK(configuration.window.maximized);
+    OL_CHECK(configuration.input.name_input_method == openlegend::input::NameInputMethod::modern);
+    OL_CHECK(!configuration.input.smooth_movement);
+    OL_CHECK(configuration.input.menu_repeat_delay == std::chrono::milliseconds{500});
+    OL_CHECK(configuration.display.scale == 1.5);
+    std::string detail;
+    OL_CHECK(initialize_program_configuration(configuration, detail));
+    OL_CHECK(save_window_configuration(configuration.program_configuration_path,
+        {1100, 700}, false, detail) == WindowConfigurationStatus::ready);
+    configuration = load_configuration(tree);
+    OL_CHECK((configuration.window.size == WindowSize{800, 700}));
+    OL_CHECK(!configuration.window.maximized);
+    OL_CHECK(file_text(tree.configuration_path()) == user);
+
+    tree.write_configuration("# accept remembered settings\n");
+    configuration = load_configuration(tree);
+    OL_CHECK((configuration.window.size == WindowSize{1100, 700}));
+    tree.write_program_configuration("[window\n");
+    configuration = load_configuration(tree);
+    OL_CHECK(configuration.window.status == WindowConfigurationStatus::parse_failed);
+    OL_CHECK(configuration.window.detail.find("openlegend.default.toml") != std::string::npos);
+    OL_CHECK(!initialize_program_configuration(configuration, detail));
+    OL_CHECK(file_text(tree.program_configuration_path()) == "[window\n");
+}
+
+void test_program_configuration_creation_and_mod_memory() {
+    using namespace openlegend::app;
+    const TemporaryTree tree;
+    tree.write_configuration("# user file\n[paths]\nmod = 'mods/original.toml'\n");
+    tree.write_mod_configuration("# old automatically saved slot\n[saves]\nlast_slot = 11\n");
+    tree.write_mod_configuration("[saves]\nlast_slot = 3\n", "variant/original.toml");
+    const auto original_mod = file_text(tree.mod_path());
+    const auto variant_mod = file_text(tree.mod_path("variant/original.toml"));
+    const auto user = file_text(tree.configuration_path());
+    auto configuration = load_configuration(tree);
+    OL_CHECK(configuration.saves.mod_key == "mods/original.toml");
+    OL_CHECK(configuration.saves.last_slot == 11);
+    OL_CHECK(!std::filesystem::exists(tree.program_configuration_path()));
+    std::string detail;
+    OL_CHECK(initialize_program_configuration(configuration, detail));
+    OL_CHECK(std::filesystem::exists(tree.program_configuration_path()));
+    OL_CHECK((load_window_configuration(tree.program_configuration_path(), {}).size ==
+        WindowSize{960, 600}));
+    OL_CHECK(save_last_save_slot(tree.program_configuration_path(),
+        configuration.saves.mod_key, 27, detail));
+    OL_CHECK(load_configuration(tree).saves.last_slot == 27);
+    OL_CHECK(file_text(tree.configuration_path()) == user);
+
+    tree.write_configuration("[paths]\nmod = 'mods/variant/original.toml'\n");
+    configuration = load_configuration(tree);
+    OL_CHECK(configuration.saves.mod_key == "mods/variant/original.toml");
+    OL_CHECK(configuration.saves.last_slot == 3);
+    OL_CHECK(initialize_program_configuration(configuration, detail));
+    OL_CHECK(save_last_save_slot(tree.program_configuration_path(),
+        configuration.saves.mod_key, 41, detail));
+    OL_CHECK(save_window_configuration(tree.program_configuration_path(),
+        {1280, 800}, true, detail) == WindowConfigurationStatus::ready);
+    OL_CHECK(load_configuration(tree).saves.last_slot == 41);
+    tree.write_configuration(user);
+    OL_CHECK(load_configuration(tree).saves.last_slot == 27);
+    OL_CHECK(file_text(tree.mod_path()) == original_mod);
+    OL_CHECK(file_text(tree.mod_path("variant/original.toml")) == variant_mod);
+    OL_CHECK(!save_last_save_slot(tree.program_configuration_path(), "", 1, detail));
+    OL_CHECK(!save_last_save_slot(tree.program_configuration_path(), "mods/original.toml", 999, detail));
+
+    tree.write_configuration(user + "[mods.'mods/original.toml']\nlast_slot = 8\n");
+    OL_CHECK(load_configuration(tree).saves.last_slot == 8);
+    OL_CHECK(save_last_save_slot(tree.program_configuration_path(), "mods/original.toml", 19, detail));
+    OL_CHECK(load_configuration(tree).saves.last_slot == 8);
+    tree.write_configuration(user);
+    OL_CHECK(load_configuration(tree).saves.last_slot == 19);
+
+    tree.write_program_configuration("invalid = [\n");
+    OL_CHECK(!save_last_save_slot(tree.program_configuration_path(), "mods/original.toml", 5, detail));
+    OL_CHECK(file_text(tree.program_configuration_path()) == "invalid = [\n");
 }
 
 }  // namespace
@@ -749,4 +805,6 @@ void run_runtime_configuration_tests() {
     test_configuration_errors();
     test_data_directory_activation();
     test_window_errors_and_schema_writeback();
+    test_layered_configuration_and_user_preservation();
+    test_program_configuration_creation_and_mod_memory();
 }

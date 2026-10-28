@@ -125,10 +125,11 @@ void check_toml_loading_and_configuration_preservation() {
     OL_CHECK(loaded.values.battle_experience_percent_step == 456);
     const auto runtime = load_runtime_configuration(
         {}, fixture.path(), fixture.directory(), fixture.directory(), {});
-    OL_CHECK(runtime.new_game_plus.status == NewGamePlusConfigurationStatus::ready);
-    OL_CHECK(runtime.new_game_plus.values == loaded.values);
+    OL_CHECK(runtime.new_game_plus.status ==
+        NewGamePlusConfigurationStatus::moved_to_mod_configuration);
     std::string detail;
-    OL_CHECK(save_window_configuration(fixture.path(), {960, 600}, false, detail) ==
+    OL_CHECK(save_window_configuration(fixture.directory() / kDefaultConfigurationFilename,
+        {960, 600}, false, detail) ==
         WindowConfigurationStatus::ready);
     const auto saved = load_new_game_plus_configuration(fixture.path());
     OL_CHECK(saved.status == NewGamePlusConfigurationStatus::ready);

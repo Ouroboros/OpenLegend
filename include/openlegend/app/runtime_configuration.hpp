@@ -20,6 +20,7 @@
 namespace openlegend::app {
 
 inline constexpr std::string_view kConfigurationFilename = "openlegend.toml";
+inline constexpr std::string_view kDefaultConfigurationFilename = "openlegend.default.toml";
 
 NODISCARD std::filesystem::path path_from_utf8(std::string_view value);
 
@@ -148,6 +149,7 @@ NODISCARD WindowConfigurationLoadResult load_window_configuration(
 // 记忆最近一次存取的存档槽位；失败时返回 false 并在 detail 里给出原因。
 NODISCARD bool save_last_save_slot(
     const std::filesystem::path& configuration_path,
+    std::string_view mod_key,
     std::uint16_t slot,
     std::string& detail);
 
@@ -344,8 +346,8 @@ struct SavesConfigurationLoadResult {
         last_slot_toml_key,
     };
 
-    // 上次使用的存档槽，来自MOD配置的[saves]；未指定MOD时不记忆。
     std::optional<std::uint16_t> last_slot;
+    std::string mod_key;
     // openlegend.toml中仍有[saves]时给出说明。
     std::string error;
 };
@@ -392,6 +394,7 @@ struct RuntimeConfigurationDefaults {
 };
 
 struct RuntimeConfiguration {
+    std::filesystem::path program_configuration_path;
     PathsConfigurationLoadResult paths;
     LoggingConfigurationLoadResult logging;
     InputConfigurationLoadResult input;
@@ -417,6 +420,9 @@ NODISCARD RuntimeConfiguration load_runtime_configuration(
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& launch_directory,
     const RuntimeConfigurationDefaults& defaults);
+
+NODISCARD bool initialize_program_configuration(
+    const RuntimeConfiguration& configuration, std::string& detail);
 
 NODISCARD std::filesystem::path make_session_log_path(
     const std::filesystem::path& configured_path,

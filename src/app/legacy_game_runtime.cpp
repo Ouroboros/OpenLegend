@@ -770,9 +770,11 @@ void LegacyGameRuntime::set_weather_presentation_enabled(
 
 void LegacyGameRuntime::set_save_slot_memory(
     const std::optional<std::uint16_t> last_slot,
-    std::filesystem::path configuration_path) {
+    std::filesystem::path configuration_path,
+    std::string mod_key) {
     last_save_slot_ = last_slot;
     save_slot_configuration_path_ = std::move(configuration_path);
+    save_slot_mod_key_ = std::move(mod_key);
 }
 
 std::string LegacyGameRuntime::load_mod_configuration(const std::filesystem::path& path) {
@@ -806,11 +808,11 @@ void LegacyGameRuntime::remember_save_slot(const std::uint16_t slot) {
         return;
     }
     last_save_slot_ = slot;
-    if (save_slot_configuration_path_.empty()) {
+    if (save_slot_configuration_path_.empty() || save_slot_mod_key_.empty()) {
         return;
     }
     std::string detail;
-    if (!save_last_save_slot(save_slot_configuration_path_, slot, detail)) {
+    if (!save_last_save_slot(save_slot_configuration_path_, save_slot_mod_key_, slot, detail)) {
         diagnostics::log_warning("unable to remember save slot: " + detail);
     }
 }

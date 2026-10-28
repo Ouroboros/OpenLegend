@@ -202,7 +202,8 @@ public:
     void set_weather_presentation_enabled(bool enabled) noexcept;
 
     void set_save_slot_memory(
-        std::optional<std::uint16_t> last_slot, std::filesystem::path configuration_path);
+        std::optional<std::uint16_t> last_slot, std::filesystem::path configuration_path,
+        std::string mod_key);
 
     // 读取[paths] mod指定的MOD配置（文件名表、合战规则）；成功返回空串，否则返回原因。
     NODISCARD std::string load_mod_configuration(const std::filesystem::path& path);
@@ -700,6 +701,7 @@ private:
     bool clear_scene_exit_key_states_requested_{};
     std::optional<std::uint16_t> last_save_slot_;
     std::filesystem::path save_slot_configuration_path_;
+    std::string save_slot_mod_key_;
     bool ending_complete_{};
     bool fade_music_on_exit_{};
     std::vector<std::uint8_t> visible_error_;

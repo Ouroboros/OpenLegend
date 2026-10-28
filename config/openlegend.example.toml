@@ -1,8 +1,14 @@
+# 用户配置：程序只读，不会改写本文件，注释与顺序保留。
+# 读取优先级：代码默认值 < openlegend.default.toml < openlegend.toml，子表逐字段合并。
+# openlegend.default.toml 由程序首次启动时生成，保存窗口状态和各 MOD 的上次存档槽。
+# 希望由程序自动记忆的项应注释掉；手写的值会在下次启动时覆盖程序保存的值。
+
 [paths]
 
 # 使用哪个 MOD 配置（相对路径以可执行文件目录为基准）。本文件只指定 MOD，
-# 数据目录、存档目录、多周目（NG+）设置都写在 MOD 配置中，上次使用的存档槽也由程序
-# 记在 MOD 配置里；本文件不接受 data_dir、save_dir、[new_game_plus] 与 [saves]。
+# 数据目录、存档目录、多周目（NG+）设置都写在只读的 MOD 配置中。
+# 上次使用的存档槽保存在 openlegend.default.toml；本文件不接受 data_dir、save_dir、
+# [new_game_plus] 与 [saves]。
 # 未指定 mod 时使用程序内置的原版设定：数据目录为启动时的当前目录，存档写入数据目录，
 # 不开启 NG+。
 # 原版数据使用 config/mods/original.toml，其他 MOD 见 config/mods/。
@@ -57,11 +63,12 @@ fade_frame_delay_ms = 5
 [window]
 
 # 这些值只控制还原后的宿主窗口。完成的游戏画面会保持宽高比，尽量填满窗口，
-# 比例不一致时居中留黑边。
+# 比例不一致时居中留黑边。保持注释时，程序从 openlegend.default.toml 恢复上次窗口状态。
+# 取消某行的注释会固定该项，下次启动时优先于程序记忆。
 
-width = 960
-height = 600
-maximized = false
+# width = 960
+# height = 600
+# maximized = false
 
 [display]
 

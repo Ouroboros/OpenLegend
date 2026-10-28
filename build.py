@@ -437,7 +437,8 @@ def cached_path_changed(current: str | None, requested: Path) -> bool:
 def reset_build_directory(build_dir: Path) -> None:
     configurations = [
         (path.relative_to(build_dir), path.read_bytes())
-        for path in build_dir.glob("src/platform/sdl3/*/openlegend.toml")
+        for filename in ("openlegend.toml", "openlegend.default.toml")
+        for path in build_dir.glob(f"src/platform/sdl3/*/{filename}")
         if path.is_file()
     ]
     shutil.rmtree(build_dir)

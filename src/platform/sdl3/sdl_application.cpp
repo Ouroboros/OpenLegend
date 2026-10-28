@@ -445,6 +445,12 @@ int run_sdl_application(
         return validation_status;
     }
 
+    std::string program_configuration_detail;
+    if (!app::initialize_program_configuration(configuration, program_configuration_detail)) {
+        diagnostics::log_warning(
+            "unable to initialize program configuration: " + program_configuration_detail);
+    }
+
     const auto game_resolution = display_resolution.resolution;
     const auto save_directory = resolve_save_directory(configuration);
     if (!save_directory.has_value()) {
@@ -497,7 +503,8 @@ int run_sdl_application(
                 : std::chrono::nanoseconds::zero()};
         loop_settings.new_game_plus_configuration = configuration.new_game_plus.values;
         loop_settings.last_save_slot = configuration.saves.last_slot;
-        loop_settings.configuration_path = configuration_path;
+        loop_settings.program_configuration_path = configuration.program_configuration_path;
+        loop_settings.save_slot_mod_key = configuration.saves.mod_key;
         loop_settings.world_map_keys = configuration.input.world_map_keys;
         loop_settings.mod_configuration = configuration.paths.mod.path;
         loop_result = run_legacy_runtime_loop(platform, loop_settings);
@@ -505,7 +512,7 @@ int run_sdl_application(
             return loop_result.status;
         }
         if (!smoke_test) {
-            save_window_state(platform, configuration, configuration_path);
+            save_window_state(platform, configuration, configuration.program_configuration_path);
             diagnostics::log_info("normal shutdown");
         }
     }

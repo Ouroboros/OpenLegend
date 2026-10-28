@@ -6,6 +6,7 @@
 #include "new_game_plus_configuration.hpp"
 
 #include "openlegend/persistence/save_slot.hpp"
+#include "openlegend/persistence/save_file.hpp"
 
 #include <toml++/toml.hpp>
 
@@ -19,6 +20,7 @@
 #include <fstream>
 #include <limits>
 #include <optional>
+#include <sstream>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -29,6 +31,7 @@ namespace {
 
 constexpr std::string_view kDataDirectoryOption = "--data-dir";
 constexpr std::string_view kDataDirectoryOptionPrefix = "--data-dir=";
+constexpr std::string_view kModStateTable = "mods";
 
 struct DirectoryCandidate {
     DataDirectoryStatus status{DataDirectoryStatus::ready};
@@ -165,7 +168,12 @@ NODISCARD ModPathConfigurationLoadResult mod_path_configuration_from_document(
     const toml::table& document,
     const std::filesystem::path& executable_directory) {
     ModPathConfigurationLoadResult result;
-    const auto* paths = document.get_as<toml::table>(PathsConfigurationLoadResult::toml_table_name);
+    const auto* paths_node = document.get(PathsConfigurationLoadResult::toml_table_name);
+    const auto* paths = paths_node != nullptr ? paths_node->as_table() : nullptr;
+    if (paths_node != nullptr && paths == nullptr) {
+        result.error = "[paths] must be a TOML table";
+        return result;
+    }
     // openlegend.toml只指定使用哪个MOD；数据与存档目录写在MOD配置的[paths]中。
     if (paths != nullptr &&
         (paths->get(PathsConfigurationLoadResult::data_directory_toml_key) != nullptr ||
@@ -265,6 +273,44 @@ NODISCARD ConfigurationDocument read_configuration_document(
     return document;
 }
 
+void merge_configuration_tables(toml::table& destination, const toml::table& source) {
+    for (const auto& [key, value] : source) {
+        auto* destination_table = destination.get_as<toml::table>(key.str());
+        const auto* source_table = value.as_table();
+        if (destination_table != nullptr && source_table != nullptr) {
+            merge_configuration_tables(*destination_table, *source_table);
+        } else {
+            destination.insert_or_assign(key.str(), value);
+        }
+    }
+}
+
+NODISCARD ConfigurationDocument read_layered_configuration(
+    const std::filesystem::path& user_path, const std::filesystem::path& program_path) {
+    auto program = read_configuration_document(program_path);
+    if (program.status != ConfigurationDocumentStatus::ready) {
+        program.detail = program_path.string() + ": " + program.detail;
+        return program;
+    }
+    auto user = read_configuration_document(user_path);
+    if (user.status != ConfigurationDocumentStatus::ready) {
+        user.detail = user_path.string() + ": " + user.detail;
+        return user;
+    }
+    merge_configuration_tables(program.values, user.values);
+    return program;
+}
+
+NODISCARD std::string mod_state_key(
+    const std::filesystem::path& mod_path, const std::filesystem::path& executable_directory) {
+    auto relative = mod_path.lexically_relative(executable_directory);
+    if (relative.empty()) {
+        relative = mod_path;
+    }
+    const auto text = relative.generic_u8string();
+    return {reinterpret_cast<const char*>(text.data()), text.size()};
+}
+
 template <typename Status>
 NODISCARD Status configuration_load_status(
     const ConfigurationDocumentStatus status) noexcept {
@@ -314,185 +360,50 @@ NODISCARD std::optional<diagnostics::LogLevel> parse_log_level(
     return std::nullopt;
 }
 
-using ConfigurationKeyPath = std::vector<std::string>;
-
-NODISCARD std::span<const std::string_view> configuration_key_order(
-    const ConfigurationKeyPath& table_path) noexcept {
-    if (table_path.empty()) {
-        return RuntimeConfiguration::toml_table_order;
+NODISCARD toml::table& configuration_table(toml::table& document, const std::string_view key) {
+    auto* table = document.get_as<toml::table>(key);
+    if (table == nullptr) {
+        document.insert_or_assign(key, toml::table{});
+        table = document.get_as<toml::table>(key);
     }
-    if (table_path.size() != 1U) {
-        return {};
-    }
-    if (table_path.front() == PathsConfigurationLoadResult::toml_table_name) {
-        return PathsConfigurationLoadResult::toml_field_order;
-    }
-    if (table_path.front() == LoggingConfigurationLoadResult::toml_table_name) {
-        return LoggingConfigurationLoadResult::toml_field_order;
-    }
-    if (table_path.front() == InputConfigurationLoadResult::toml_table_name) {
-        return InputConfigurationLoadResult::toml_field_order;
-    }
-    if (table_path.front() == TimingConfigurationLoadResult::toml_table_name) {
-        return TimingConfigurationLoadResult::toml_field_order;
-    }
-    if (table_path.front() == WindowConfigurationLoadResult::toml_table_name) {
-        return WindowConfigurationLoadResult::toml_field_order;
-    }
-    if (table_path.front() == DisplayConfigurationLoadResult::toml_table_name) {
-        return DisplayConfigurationLoadResult::toml_field_order;
-    }
-    return {};
+    return *table;
 }
 
-NODISCARD std::vector<std::string_view> ordered_keys(
-    const toml::table& table, const ConfigurationKeyPath& table_path) {
-    const auto key_order = configuration_key_order(table_path);
-    std::vector<std::string_view> keys;
-    keys.reserve(key_order.size());
-    for (const auto key : key_order) {
-        if (table.get(key) != nullptr) {
-            keys.push_back(key);
-        }
+NODISCARD std::optional<std::uint16_t> stored_save_slot(
+    const toml::table& document, const std::string_view mod_key) {
+    const auto slot = document[kModStateTable][mod_key]
+        [SavesConfigurationLoadResult::last_slot_toml_key].value<std::int64_t>();
+    if (!slot.has_value() || *slot < 0 ||
+        *slot >= static_cast<std::int64_t>(persistence::kNumberedSaveSlotCount)) {
+        return std::nullopt;
     }
-    return keys;
+    return static_cast<std::uint16_t>(*slot);
 }
 
-NODISCARD bool is_bare_key(const std::string_view key) noexcept {
-    if (key.empty()) {
+void set_stored_save_slot(
+    toml::table& document, const std::string_view mod_key, const std::uint16_t slot) {
+    auto& mods = configuration_table(document, kModStateTable);
+    auto& state = configuration_table(mods, mod_key);
+    state.insert_or_assign(SavesConfigurationLoadResult::last_slot_toml_key, slot);
+}
+
+NODISCARD bool write_program_configuration(
+    const std::filesystem::path& path, const toml::table& previous,
+    const toml::table& document, std::string& detail) {
+    if (previous == document) {
+        return true;
+    }
+    std::ostringstream output;
+    output << toml::toml_formatter{document} << '\n';
+    const auto text = output.str();
+    const auto written = persistence::replace_save_file(path,
+        std::span<const std::uint8_t>{reinterpret_cast<const std::uint8_t*>(text.data()),
+            text.size()}, std::numeric_limits<std::size_t>::max());
+    if (!written) {
+        detail = path.string() + ": " + written.detail;
         return false;
     }
-    return std::ranges::all_of(key, [](const unsigned char character) {
-        return (character >= 'A' && character <= 'Z') ||
-            (character >= 'a' && character <= 'z') ||
-            (character >= '0' && character <= '9') || character == '_' || character == '-';
-    });
-}
-
-void write_key(std::ostream& output, const std::string_view key) {
-    if (is_bare_key(key)) {
-        output << key;
-        return;
-    }
-
-    static constexpr std::string_view hexadecimal = "0123456789ABCDEF";
-    output.put('"');
-    for (const char byte : key) {
-        const auto character = static_cast<unsigned char>(byte);
-        switch (character) {
-        case '\b':
-            output << "\\b";
-            break;
-        case '\t':
-            output << "\\t";
-            break;
-        case '\n':
-            output << "\\n";
-            break;
-        case '\f':
-            output << "\\f";
-            break;
-        case '\r':
-            output << "\\r";
-            break;
-        case '"':
-            output << "\\\"";
-            break;
-        case '\\':
-            output << "\\\\";
-            break;
-        default:
-            if (character < 0x20U || character == 0x7FU) {
-                output << "\\u00" << hexadecimal[character >> 4U]
-                       << hexadecimal[character & 0x0FU];
-            } else {
-                output.put(static_cast<char>(character));
-            }
-            break;
-        }
-    }
-    output.put('"');
-}
-
-void write_key_path(std::ostream& output, const ConfigurationKeyPath& key_path) {
-    for (std::size_t index = 0U; index < key_path.size(); ++index) {
-        if (index != 0U) {
-            output.put('.');
-        }
-        write_key(output, key_path[index]);
-    }
-}
-
-NODISCARD bool is_child_table(const toml::node& node) noexcept {
-    const auto* table = node.as_table();
-    return table != nullptr && !table->is_inline();
-}
-
-NODISCARD bool is_table_array(const toml::node& node) noexcept {
-    const auto* array = node.as_array();
-    if (array == nullptr || !array->is_array_of_tables() || array->empty()) {
-        return false;
-    }
-    const auto* first_table = (*array)[0U].as_table();
-    return first_table != nullptr && !first_table->is_inline();
-}
-
-void write_table_contents(
-    std::ostream& output,
-    const toml::table& table,
-    const ConfigurationKeyPath& table_path,
-    bool& has_output) {
-    const auto keys = ordered_keys(table, table_path);
-    for (const auto key : keys) {
-        const toml::node* value = table.get(key);
-        if (value == nullptr || is_child_table(*value) || is_table_array(*value)) {
-            continue;
-        }
-        write_key(output, key);
-        output << " = " << toml::toml_formatter{*value} << '\n';
-        has_output = true;
-    }
-
-    for (const auto key : keys) {
-        const toml::node* value = table.get(key);
-        if (value == nullptr || !is_child_table(*value)) {
-            continue;
-        }
-        auto child_path = table_path;
-        child_path.emplace_back(key);
-        if (has_output) {
-            output.put('\n');
-        }
-        output.put('[');
-        write_key_path(output, child_path);
-        output << "]\n";
-        has_output = true;
-        write_table_contents(output, *value->as_table(), child_path, has_output);
-    }
-
-    for (const auto key : keys) {
-        const toml::node* value = table.get(key);
-        if (value == nullptr || !is_table_array(*value)) {
-            continue;
-        }
-        auto child_path = table_path;
-        child_path.emplace_back(key);
-        for (const auto& element : *value->as_array()) {
-            if (has_output) {
-                output.put('\n');
-            }
-            output << "[[";
-            write_key_path(output, child_path);
-            output << "]]\n";
-            has_output = true;
-            write_table_contents(output, *element.as_table(), child_path, has_output);
-        }
-    }
-}
-
-void write_configuration_document(std::ostream& output, const toml::table& document) {
-    bool has_output = false;
-    write_table_contents(output, document, {}, has_output);
+    return true;
 }
 
 NODISCARD WindowConfigurationLoadResult window_load_error(
@@ -518,10 +429,12 @@ NODISCARD WindowConfigurationLoadResult window_configuration_from_document(
     if (window == nullptr) {
         return window_load_error(WindowConfigurationStatus::invalid_window_table, fallback);
     }
-    const auto width =
-        (*window)[WindowConfigurationLoadResult::width_toml_key].value<std::int64_t>();
-    const auto height =
-        (*window)[WindowConfigurationLoadResult::height_toml_key].value<std::int64_t>();
+    const auto* width_node = window->get(WindowConfigurationLoadResult::width_toml_key);
+    const auto* height_node = window->get(WindowConfigurationLoadResult::height_toml_key);
+    const auto width = width_node != nullptr ? width_node->value<std::int64_t>()
+        : std::optional<std::int64_t>{fallback.width};
+    const auto height = height_node != nullptr ? height_node->value<std::int64_t>()
+        : std::optional<std::int64_t>{fallback.height};
     if (!width.has_value() || !height.has_value() || !valid_dimension(*width) ||
         !valid_dimension(*height)) {
         return window_load_error(WindowConfigurationStatus::invalid_window_size, fallback);
@@ -927,83 +840,22 @@ WindowConfigurationLoadResult load_window_configuration(
 
 bool save_last_save_slot(
     const std::filesystem::path& configuration_path,
+    const std::string_view mod_key,
     const std::uint16_t slot,
     std::string& detail) {
-    // 只改写[saves]中的last_slot一行，文件其余内容（注释、格式）原样保留。
     detail.clear();
-    std::ifstream input{configuration_path, std::ios::binary};
-    if (!input) {
-        detail = configuration_path.string();
+    if (mod_key.empty() || slot >= persistence::kNumberedSaveSlotCount) {
+        detail = "invalid MOD key or save slot";
         return false;
     }
-    std::vector<std::string> lines;
-    for (std::string line; std::getline(input, line);) {
-        lines.push_back(std::move(line));
-    }
-    input.close();
-    const auto trimmed = [](std::string_view text) {
-        const auto begin = text.find_first_not_of(" \t\r");
-        const auto end = text.find_last_not_of(" \t\r");
-        return begin == std::string_view::npos
-            ? std::string_view{} : text.substr(begin, end - begin + 1U);
-    };
-    const auto table_name = [&trimmed](const std::string_view line) -> std::optional<std::string_view> {
-        auto text = trimmed(line.substr(0U, line.find('#')));
-        if (text.size() < 2U || text.front() != '[' || text.back() != ']' ||
-            text.starts_with("[[")) {
-            return std::nullopt;
-        }
-        return trimmed(text.substr(1U, text.size() - 2U));
-    };
-    const auto value_line = std::string{SavesConfigurationLoadResult::last_slot_toml_key} +
-        " = " + std::to_string(slot);
-    std::optional<std::size_t> section;
-    std::optional<std::size_t> section_end;
-    std::optional<std::size_t> existing;
-    for (std::size_t index = 0U; index < lines.size(); ++index) {
-        if (const auto name = table_name(lines[index])) {
-            if (section.has_value() && !section_end.has_value()) {
-                section_end = index;
-            }
-            if (*name == SavesConfigurationLoadResult::toml_table_name) {
-                section = index;
-            }
-            continue;
-        }
-        const auto text = trimmed(lines[index]);
-        if (section.has_value() && !section_end.has_value() &&
-            text.starts_with(SavesConfigurationLoadResult::last_slot_toml_key)) {
-            const auto rest = trimmed(text.substr(
-                SavesConfigurationLoadResult::last_slot_toml_key.size()));
-            if (rest.starts_with('=')) {
-                existing = index;
-            }
-        }
-    }
-    if (existing.has_value()) {
-        lines[*existing] = value_line;
-    } else if (section.has_value()) {
-        lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(*section + 1U), value_line);
-    } else {
-        if (!lines.empty() && !trimmed(lines.back()).empty()) {
-            lines.emplace_back();
-        }
-        lines.push_back("[" + std::string{SavesConfigurationLoadResult::toml_table_name} + "]");
-        lines.push_back(value_line);
-    }
-    std::ofstream output{configuration_path, std::ios::binary | std::ios::trunc};
-    if (!output) {
-        detail = configuration_path.string();
+    auto loaded = read_configuration_document(configuration_path);
+    if (loaded.status != ConfigurationDocumentStatus::ready) {
+        detail = configuration_path.string() + ": " + loaded.detail;
         return false;
     }
-    for (const auto& line : lines) {
-        output << line << '\n';
-    }
-    if (!output) {
-        detail = configuration_path.string();
-        return false;
-    }
-    return true;
+    const auto previous = loaded.values;
+    set_stored_save_slot(loaded.values, mod_key, slot);
+    return write_program_configuration(configuration_path, previous, loaded.values, detail);
 }
 
 WindowConfigurationStatus save_window_configuration(
@@ -1015,35 +867,18 @@ WindowConfigurationStatus save_window_configuration(
     if (size.width <= 0 || size.height <= 0) {
         return WindowConfigurationStatus::invalid_window_size;
     }
-    auto loaded_document = read_configuration_document(configuration_path);
-    if (loaded_document.status != ConfigurationDocumentStatus::ready) {
-        detail = std::move(loaded_document.detail);
-        return configuration_load_status<WindowConfigurationStatus>(loaded_document.status);
+    auto loaded = read_configuration_document(configuration_path);
+    if (loaded.status != ConfigurationDocumentStatus::ready) {
+        detail = configuration_path.string() + ": " + loaded.detail;
+        return configuration_load_status<WindowConfigurationStatus>(loaded.status);
     }
-    auto document = std::move(loaded_document.values);
-    toml::table* window =
-        document[WindowConfigurationLoadResult::toml_table_name].as_table();
-    if (window == nullptr) {
-        document.insert_or_assign(
-            WindowConfigurationLoadResult::toml_table_name, toml::table{});
-        window = document[WindowConfigurationLoadResult::toml_table_name].as_table();
-    }
-    window->insert_or_assign(WindowConfigurationLoadResult::width_toml_key, size.width);
-    window->insert_or_assign(WindowConfigurationLoadResult::height_toml_key, size.height);
-    window->insert_or_assign(
-        WindowConfigurationLoadResult::maximized_toml_key, maximized);
-
-    std::ofstream output{configuration_path, std::ios::binary | std::ios::trunc};
-    if (!output) {
-        detail = configuration_path.string();
-        return WindowConfigurationStatus::write_failed;
-    }
-    write_configuration_document(output, document);
-    if (!output) {
-        detail = configuration_path.string();
-        return WindowConfigurationStatus::write_failed;
-    }
-    return WindowConfigurationStatus::ready;
+    const auto previous = loaded.values;
+    auto& window = configuration_table(loaded.values, WindowConfigurationLoadResult::toml_table_name);
+    window.insert_or_assign(WindowConfigurationLoadResult::width_toml_key, size.width);
+    window.insert_or_assign(WindowConfigurationLoadResult::height_toml_key, size.height);
+    window.insert_or_assign(WindowConfigurationLoadResult::maximized_toml_key, maximized);
+    return write_program_configuration(configuration_path, previous, loaded.values, detail)
+        ? WindowConfigurationStatus::ready : WindowConfigurationStatus::write_failed;
 }
 
 DisplayConfigurationLoadResult load_display_configuration(
@@ -1146,9 +981,11 @@ RuntimeConfiguration load_runtime_configuration(
     const std::filesystem::path& executable_directory,
     const std::filesystem::path& launch_directory,
     const RuntimeConfigurationDefaults& defaults) {
-    const auto document = read_configuration_document(configuration_path);
+    const auto program_path = executable_directory / kDefaultConfigurationFilename;
+    const auto document = read_layered_configuration(configuration_path, program_path);
 
     RuntimeConfiguration configuration;
+    configuration.program_configuration_path = program_path;
     // openlegend.toml只指定MOD；数据与存档目录取自MOD配置的[paths]。
     std::optional<ModConfiguration> mod;
     if (document.status == ConfigurationDocumentStatus::ready) {
@@ -1225,9 +1062,16 @@ RuntimeConfiguration load_runtime_configuration(
             window_configuration_from_document(document.values, defaults.window_size);
         if (document.values.get(SavesConfigurationLoadResult::toml_table_name) != nullptr) {
             configuration.saves.error =
-                "[saves] belongs in the MOD configuration ([paths] mod), not in openlegend.toml";
+                "[saves] is no longer used in openlegend.toml; "
+                "save slot memory is stored in openlegend.default.toml";
         } else if (mod.has_value()) {
-            configuration.saves.last_slot = mod->last_save_slot;
+            configuration.saves.mod_key = mod_state_key(
+                *configuration.paths.mod.path, executable_directory);
+            configuration.saves.last_slot = stored_save_slot(
+                document.values, configuration.saves.mod_key);
+            if (!configuration.saves.last_slot.has_value()) {
+                configuration.saves.last_slot = mod->last_save_slot;
+            }
         }
         configuration.new_game_plus =
             new_game_plus_configuration_from_mod(document.values, mod);
@@ -1268,6 +1112,34 @@ RuntimeConfiguration load_runtime_configuration(
         configuration_load_status<NewGamePlusConfigurationStatus>(document.status);
     configuration.new_game_plus.detail = document.detail;
     return configuration;
+}
+
+bool initialize_program_configuration(
+    const RuntimeConfiguration& configuration, std::string& detail) {
+    detail.clear();
+    const auto& path = configuration.program_configuration_path;
+    auto loaded = read_configuration_document(path);
+    if (loaded.status != ConfigurationDocumentStatus::ready) {
+        detail = path.string() + ": " + loaded.detail;
+        return false;
+    }
+    const auto previous = loaded.values;
+    if (!loaded.values.contains(WindowConfigurationLoadResult::toml_table_name)) {
+        auto& window = configuration_table(
+            loaded.values, WindowConfigurationLoadResult::toml_table_name);
+        window.insert_or_assign(WindowConfigurationLoadResult::width_toml_key,
+            configuration.window.size.width);
+        window.insert_or_assign(WindowConfigurationLoadResult::height_toml_key,
+            configuration.window.size.height);
+        window.insert_or_assign(WindowConfigurationLoadResult::maximized_toml_key,
+            configuration.window.maximized);
+    }
+    if (!configuration.saves.mod_key.empty() && configuration.saves.last_slot.has_value() &&
+        !stored_save_slot(loaded.values, configuration.saves.mod_key).has_value()) {
+        set_stored_save_slot(loaded.values, configuration.saves.mod_key,
+            *configuration.saves.last_slot);
+    }
+    return write_program_configuration(path, previous, loaded.values, detail);
 }
 
 std::filesystem::path make_session_log_path(

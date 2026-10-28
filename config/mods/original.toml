@@ -12,7 +12,8 @@
 #     data_dir  数据目录；未写时为启动时的当前目录
 #     save_dir  存档目录；未写时为 save/<本文件名去掉扩展名>
 #   [new_game_plus] 可选，多周目设置，字段说明见 config/mods/original.toml；未写时不开启
-#   [saves]   程序自动写入，记住上次使用的存档槽（last_slot），不需要手写
+#   本文件由程序只读。上次存档槽按 MOD 配置路径分别记在 openlegend.default.toml。
+#   旧版 [saves] last_slot 会在程序文件尚无该 MOD 记录时导入一次，旧文件保持原样。
 #   [[merge]] 可选，合战规则，字段说明见 config/mods/original.toml
 #   [files] 可选，按编号打开的资源文件名表；第 n 项为编号 n 的文件名，文件名相对 data_dir。
 #           未列出的表使用原版命名，编号超出所列项数时报错。

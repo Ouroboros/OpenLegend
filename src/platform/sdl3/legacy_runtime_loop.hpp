@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "openlegend/attributes.hpp"
@@ -29,7 +30,8 @@ struct LegacyRuntimeLoopSettings {
         std::chrono::nanoseconds{1'000'000'000} / 240};
     model::NewGamePlusConfiguration new_game_plus_configuration{};
     std::optional<std::uint16_t> last_save_slot{};
-    std::filesystem::path configuration_path{};
+    std::filesystem::path program_configuration_path{};
+    std::string save_slot_mod_key{};
     std::vector<std::uint8_t> world_map_keys{static_cast<std::uint8_t>('M'), 0x09U};
     // [paths] mod；未配置时使用程序内置的原版设定。
     std::optional<std::filesystem::path> mod_configuration{};

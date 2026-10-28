@@ -24,7 +24,7 @@ struct ModConfiguration {
     std::optional<std::string> save_directory;
     // [new_game_plus]：NG+设置，字段与取值由NG+配置统一校验；未写时不开启NG+。
     std::optional<toml::table> new_game_plus;
-    // [saves] last_slot：程序记忆的上次存档槽；取值无效时当作没有记忆。
+    // 旧版[saves] last_slot，仅在程序文件中尚无该MOD的记录时导入；不再写回。
     std::optional<std::uint16_t> last_save_slot;
     // [[merge]]：合战规则，由parse_battle_merge_rules按数据目录核对资源后生效。
     std::optional<toml::array> merges;

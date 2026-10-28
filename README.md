@@ -39,12 +39,21 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
 
 ### 配置
 
-配置分两个文件，修改后重启游戏生效：
+手动设置修改后重启游戏生效：
 
-- `openlegend.toml`：放在 `openlegend.exe` 旁，只管界面与操作，并指定使用哪个 MOD 配置；
-- MOD 配置（如 `mods/original.toml`）：每套游戏数据（原版或 MOD）一个，写数据目录、存档目录、多周目、合战规则和资源文件名。
+| 文件 | 职责 | 程序读写 |
+|---|---|---|
+| `openlegend.toml` | 用户设置：界面、操作和使用哪个 MOD | 只读，保留注释和顺序 |
+| `openlegend.default.toml` | 程序记忆：窗口状态、各 MOD 的上次存档槽 | 自动生成并写回 |
+| MOD 配置，如 `mods/original.toml` | 数据目录、存档目录、多周目、合战规则、资源文件名 | 只读 |
 
-两处的相对路径都以 `openlegend.exe` 所在目录为基准。
+主配置读取优先级为：代码默认值 → `openlegend.default.toml` → `openlegend.toml`，同名项以后者为准，子表逐字段合并。
+
+`openlegend.default.toml` 放在 exe 旁，首次启动时生成，不随发布包分发。值没有变化时不写文件，写回时先生成临时文件再替换原文件。文件格式错误时启动报错，原文件不会被覆盖。
+
+用户文件中明确填写的项，每次启动都会覆盖程序记忆。希望自动记忆的项应保持注释；旧配置中固定的窗口值也需要注释掉，才能恢复上次窗口状态。
+
+所有相对路径都以 `openlegend.exe` 所在目录为基准。
 
 #### openlegend.toml
 
@@ -79,9 +88,10 @@ fade_frame_delay_ms = 5
 
 [window]
 # 窗口还原时的大小，以及启动时是否最大化；画面保持宽高比，比例不同时留黑边。
-width = 960
-height = 600
-maximized = false
+# 保持注释时使用程序记忆；取消注释会固定该项，优先于上次保存的窗口状态。
+# width = 960
+# height = 600
+# maximized = false
 
 [display]
 # 游戏画面的逻辑分辨率：scale 为 320×200 的倍数（1.0～4.0），优先于 width、height。
@@ -91,6 +101,29 @@ scale = 2
 # width = 640
 # height = 400
 ```
+
+#### openlegend.default.toml
+
+由程序生成和维护，不需要手写。下面展示窗口状态及两套 MOD 各自的槽位记忆，槽位编号从 0 开始：
+
+```toml
+[window]
+# 退出时保存的窗口大小。
+width = 960
+height = 600
+# 退出时是否最大化。
+maximized = false
+
+[mods.'mods/original.toml']
+# 原版 MOD 上次使用的存档槽。
+last_slot = 0
+
+[mods.'mods/canglongzhuri.toml']
+# 苍龙逐日上次使用的存档槽，与原版分别记忆。
+last_slot = 2
+```
+
+MOD 记录使用相对于 exe 的配置路径作为键。旧 MOD 配置中的 `[saves] last_slot` 会在程序文件尚无该 MOD 的记录时导入一次，旧文件保持原样。
 
 #### MOD 配置
 
@@ -141,10 +174,6 @@ dialogues = [[2919, 67, 0], [2920, 71, 0], [2921, 0, 1]]
 'KDEF.GRP' = '135c5e09…'
 'TALK.GRP' = '5cde1186…'
 'WAR.STA' = '98e3f669…'
-
-[saves]
-# 程序自动写入：上次使用的存档槽，不需要手写。
-last_slot = 0
 
 [files]
 # 按编号打开的资源文件名表，第 n 项为编号 n 的文件名（相对 data_dir），只有改过

@@ -325,12 +325,17 @@ class BuildToolTest(unittest.TestCase):
             )
             configuration.parent.mkdir(parents=True)
             configuration.write_text("[window]\nwidth = 960\n", encoding="utf-8")
+            program_configuration = configuration.with_name("openlegend.default.toml")
+            program_configuration.write_text("[window]\nwidth = 1280\n", encoding="utf-8")
             (build_dir / "CMakeCache.txt").write_text("stale", encoding="utf-8")
 
             build.reset_build_directory(build_dir)
 
             self.assertEqual(
                 configuration.read_text(encoding="utf-8"), "[window]\nwidth = 960\n"
+            )
+            self.assertEqual(
+                program_configuration.read_text(encoding="utf-8"), "[window]\nwidth = 1280\n"
             )
             self.assertFalse((build_dir / "CMakeCache.txt").exists())
 
