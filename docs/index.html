@@ -249,6 +249,8 @@
     <li>姓名可用原版注音键盘或系统输入法输入，姓名画面按 F12 切换。</li>
     <li>自动战斗中按空格、回车或 Esc 取消自动。</li>
     <li>物品列表按 PageUp／PageDown 整页翻动。</li>
+    <li>退出时记住窗口大小和是否最大化，下次启动恢复。</li>
+    <li>程序不改写 <code>openlegend.toml</code>，自动记忆的内容只写入 <code>openlegend.default.toml</code>。</li>
   </ul>
 
   <h3>战斗界面</h3>
@@ -292,6 +294,7 @@
     <li>支持翻页、跳到首尾槽位和删除存档。</li>
     <li>损坏的存档会标出。</li>
     <li>打开存档列表时光标停在上次使用的槽位。</li>
+    <li>上次使用的槽位按 MOD 分别记忆，保存在 <code>openlegend.default.toml</code>。</li>
   </ul>
 
   <h3>多周目（New Game+）</h3>
@@ -308,6 +311,7 @@
   <ul>
     <li>每套游戏数据（原版或 MOD）对应一个 MOD 配置。</li>
     <li>MOD 配置写明数据目录、存档目录、多周目设置和合战规则。</li>
+    <li>程序只读取 MOD 配置，不改写。</li>
     <li>人物、物品、场景等记录数量与对话条数按数据文件读取，可运行修改过这些数量的 MOD。</li>
     <li>附带苍龙逐日的配置。</li>
     <li>MOD 在 <code>Z.DAT</code> 中修改的战斗、成长规则不生效，游戏按本项目的规则运行。</li>
@@ -326,6 +330,7 @@
         <tr><td><code>mods\original.toml</code></td><td>原版的 MOD 配置：数据目录、存档目录、多周目设置</td></tr>
         <tr><td><code>mods\canglongzhuri.toml</code></td><td>苍龙逐日的 MOD 配置</td></tr>
       </table>
+      <p>发布包里没有 <code>openlegend.default.toml</code>，首次运行时由程序在 <code>openlegend.exe</code> 旁生成。</p>
     </li>
     <li>在 <code>openlegend.toml</code> 中指定原版的 MOD 配置：
 <pre>[paths]

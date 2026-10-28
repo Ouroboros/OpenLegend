@@ -20,6 +20,8 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
    | `mods\original.toml` | 原版的 MOD 配置：数据目录、存档目录、多周目设置 |
    | `mods\canglongzhuri.toml` | 苍龙逐日的 MOD 配置 |
 
+   发布包里没有 `openlegend.default.toml`，首次运行时由程序在 `openlegend.exe` 旁生成。
+
 3. 在 `openlegend.toml` 中指定原版的 MOD 配置：
 
    ```toml
@@ -208,6 +210,8 @@ fight_group = ['fmp000', 'fmp001']         # 战斗动画，原版 FIGHTnnn.GRP
 - 支持翻页、跳到首尾槽位和删除存档；
 - 损坏的存档会标出；
 - 存档目录可与游戏数据目录分开；
+- 打开存档列表时光标停在上次使用的槽位；
+- 上次使用的槽位按 MOD 分别记忆，保存在 `openlegend.default.toml`；
 - 标题界面、游戏菜单和死亡界面使用同一个存档列表。
 
 ### 姓名输入
@@ -408,6 +412,8 @@ fight_group = ['fmp000', 'fmp001']         # 战斗动画，原版 FIGHTnnn.GRP
 ### 运行设置
 
 - 可设置游戏数据目录、存档目录、游戏画面大小、窗口大小和启动时是否最大化；
+- 退出时记住窗口大小和是否最大化，下次启动恢复；
+- 程序不改写 `openlegend.toml` 和 MOD 配置，自动记忆的内容只写入 `openlegend.default.toml`；
 - 可通过 MOD 配置运行改动过文件名表和记录数量的 MOD 数据；
 - 可设置移动长按延迟、菜单连发速度和淡入淡出速度；
 - 每次启动可生成单独的日志文件；

@@ -160,7 +160,7 @@ OPENLEGEND_RECONFIGURE=1 ./build.sh app --data-dir ../data
 set "OPENLEGEND_RECONFIGURE=1" && build.bat app --data-dir "E:\Game\OpenLegend\data"
 ```
 
-应用 BUILD 完成后会输出 `openlegend` 或 `openlegend.exe` 的绝对路径。用户配置文件 `openlegend.toml` 位于可执行文件旁；BUILD 重置缓存时会保留已有配置内容。
+应用 BUILD 完成后会输出 `openlegend` 或 `openlegend.exe` 的绝对路径。用户配置文件 `openlegend.toml` 和程序记忆文件 `openlegend.default.toml` 位于可执行文件旁；BUILD 重置缓存时两个文件都会保留。
 
 ## 部署
 
@@ -173,7 +173,7 @@ set "OPENLEGEND_RECONFIGURE=1" && build.bat app --data-dir "E:\Game\OpenLegend\d
 
 Windows ASan 应用还必须把同批 BUILD 生成的 `clang_rt.asan_dynamic-x86_64.dll` 复制到 `openlegend.exe` 同目录。EXE、PDB 和 ASan DLL 应来自同一个构建配置，不得混用旧产物。
 
-`openlegend.toml` 应放在部署后的可执行文件同目录。相对的 `data_dir`、`save_dir` 和日志路径均从该目录解析。
+`openlegend.toml` 应放在部署后的可执行文件同目录；`openlegend.default.toml` 由程序在同目录生成，不需要部署。`openlegend.toml` 中的 MOD 路径、MOD 配置中的 `data_dir` 与 `save_dir`，以及日志路径，相对路径均从该目录解析。
 
 部署完成不代表已经启动；除非明确要求，不应自动运行游戏。
 
