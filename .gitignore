@@ -31,6 +31,3 @@ __pycache__/
 *.user
 .DS_Store
 Thumbs.db
-
-# Release packages
-/dist/

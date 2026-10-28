@@ -179,13 +179,21 @@ Windows ASan 应用还必须把同批 BUILD 生成的 `clang_rt.asan_dynamic-x86
 
 ## 发布包
 
-Windows 发布包由根目录 `release.bat` 生成：
+编译并打包：
 
 ```bat
-release.bat v0.1.0
+scripts\package.bat
 ```
 
-脚本经 `build.bat app --config Release --clean` 清除全部编译产物后从头编译（保留已下载的依赖源码），再把 `openlegend.exe`、`config\openlegend.example.toml`（改名为 `openlegend.toml`） 与 `config\mods\*.toml`（放在包内 `mods\`）打成 `dist\OpenLegend-<版本>-windows-x64.zip`。省略版本时取最近的 tag 名（`git describe --tags --abbrev=0`）。原版数据目录取 `OPENLEGEND_GAME_DATA_ROOT`，未设置时为仓库旁的 `..\data`。发布包不含原版数据，也不含 ASan 运行库；普通 Release 使用静态 CRT 与静态依赖，不需要附带 DLL。
+脚本经 `build.bat app --config Release --clean` 清除全部编译产物后从头编译（保留已下载的依赖源码），再把 `openlegend.exe`、`config\openlegend.example.toml`（改名为 `openlegend.toml`）与 `config\mods\*.toml`（放在包内 `mods\`）打成 `build\OpenLegend-<日期>-<提交>.zip`，文件位于压缩包根目录。日期格式为 `yyyyMMdd`，提交为 `git rev-parse --short HEAD`；找不到 Git 时省略提交部分。原版数据目录取 `OPENLEGEND_GAME_DATA_ROOT`，未设置时为仓库旁的 `..\data`。发布包不含原版数据，也不含 ASan 运行库；普通 Release 使用静态 CRT 与静态依赖，不需要附带 DLL。
+
+编译、打包并更新 GitHub Release 的下载：
+
+```bat
+scripts\release.bat
+```
+
+先运行 `package.bat`，再用 GitHub CLI（`gh`，需先 `gh auth login`）把压缩包上传到 Release，然后删掉 Release 里其他名字的压缩包。Release 的 tag、标题和说明不变。默认的 Release 是 tag `v0.1`，可用环境变量 `OPENLEGEND_RELEASE` 指定。
 
 ## 常见问题
 

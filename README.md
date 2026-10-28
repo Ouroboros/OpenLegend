@@ -11,7 +11,7 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
 ### 准备
 
 1. 准备《金庸群侠传》DOS 版的完整游戏目录（含 `Z.COM`、`Z.DAT`、`RANGER.GRP`、`ALLSIN.GRP` 等原版文件）。
-2. 从 [Releases](https://github.com/Ouroboros/OpenLegend/releases) 下载 `OpenLegend-<版本>-windows-x64.zip`，解压得到：
+2. 从 [Releases](https://github.com/Ouroboros/OpenLegend/releases) 下载 `OpenLegend-<日期>-<提交>.zip`，解压得到：
 
    | 文件 | 用途 |
    |---|---|
