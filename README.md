@@ -4,6 +4,8 @@ OpenLegend 是《金庸群侠传》DOS 版的 C++ 重写。剧情、战斗、数
 
 主页：<https://ouroboros.github.io/OpenLegend/>
 
+物品大全（原版资料）：<https://ouroboros.github.io/OpenLegend/#items>
+
 仓库不包含、也不分发原版游戏数据。使用者须自行合法取得原版资源。
 
 ## 使用方法

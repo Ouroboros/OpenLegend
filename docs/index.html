@@ -188,10 +188,17 @@
   .gallery figcaption { font-size: 14px; text-align: center; }
   .note { color: var(--disabled); text-shadow: var(--shadow) var(--disabled-shadow); font-size: 15px; }
   footer { text-align: center; font-size: 14px; color: var(--disabled); text-shadow: var(--shadow) var(--disabled-shadow); }
+  /* 物品大全等独立页面在内容区打开，左右与内容区留白相同，目录保持可见。 */
+  .pages { display: none; position: fixed; left: 196px; top: 0; right: 196px; bottom: 0; }
+  .pages iframe { display: none; width: 100%; height: 100%; border: 0; background: transparent; }
+  .pages iframe.shown { display: block; }
+  body.viewing main { display: none; }
+  body.viewing .pages { display: block; }
   @media (max-width: 760px) {
     nav { position: static; width: auto; margin: 12px; }
     nav a { display: inline-block; font-size: 17px; }
     main { padding: 0 12px 48px; }
+    .pages { position: static; height: 100vh; }
   }
 </style>
 </head>
@@ -202,6 +209,7 @@
   <a href="#guide">说明</a>
   <a href="#install">安装</a>
   <a href="#data">游戏数据</a>
+  <a href="#items">物品大全</a>
   <p class="links">
     <a href="https://github.com/Ouroboros/OpenLegend">GitHub</a> ·
     <a href="https://github.com/Ouroboros/OpenLegend/releases">下载</a>
@@ -605,6 +613,8 @@ fight_group = ['fmp000', 'fmp001']         <span class="comment"># 战斗动画�
 </footer>
 </main>
 
+<div class="pages" id="pages"></div>
+
 <div id="viewer"><img alt=""></div>
 
 <script>
@@ -624,10 +634,26 @@ fight_group = ['fmp000', 'fmp001']         <span class="comment"># 战斗动画�
     }
   });
 
+  // 独立页面（物品大全）在内容区打开，首次显示时载入；网址 #items/名称@编号 指定打开的物品。
+  const pages = { items: 'items.html' };
+  const frames = {};
+  const details = {};
+  const decoded = (text) => {
+    try {
+      return decodeURIComponent(text);
+    } catch {
+      return text;
+    }
+  };
+
   // 滚动时高亮当前所在的栏目，与游戏菜单的选中框一致。
-  const links = [...document.querySelectorAll('nav a[href^="#"]')];
+  const links = [...document.querySelectorAll('nav a[href^="#"]')]
+    .filter((link) => !pages[link.hash.slice(1)]);
   const sections = links.map((link) => document.querySelector(link.getAttribute('href')));
   const update = () => {
+    if (document.body.classList.contains('viewing')) {
+      return;
+    }
     let current = 0;
     sections.forEach((section, index) => {
       if (section.getBoundingClientRect().top <= window.innerHeight * 0.35) {
@@ -637,7 +663,52 @@ fight_group = ['fmp000', 'fmp001']         <span class="comment"># 战斗动画�
     links.forEach((link, index) => link.classList.toggle('current', index === current));
   };
   window.addEventListener('scroll', update, { passive: true });
-  update();
+
+  const route = () => {
+    const [name, ...rest] = location.hash.slice(1).split('/');
+    const detail = decoded(rest.join('/'));
+    const page = pages[name];
+    document.body.classList.toggle('viewing', page !== undefined);
+    document.querySelectorAll('nav a[href^="#"]').forEach((link) =>
+      link.classList.toggle('current', page !== undefined && link.hash === `#${name}`));
+    if (page === undefined) {
+      const target = document.getElementById(name);
+      if (target) {
+        target.scrollIntoView();
+      }
+      update();
+      return;
+    }
+    const source = detail ? `${page}#${encodeURIComponent(detail)}` : page;
+    if (!frames[name]) {
+      const frame = document.createElement('iframe');
+      frame.src = source;
+      frame.title = document.querySelector(`nav a[href="#${name}"]`).textContent;
+      frame.addEventListener('load', () => frame.classList.contains('shown') && frame.focus());
+      document.getElementById('pages').append(frame);
+      frames[name] = frame;
+      details[name] = detail;
+    } else if (detail && details[name] !== detail) {
+      frames[name].contentWindow.location.replace(source);
+      details[name] = detail;
+    }
+    Object.entries(frames).forEach(([key, frame]) => frame.classList.toggle('shown', key === name));
+    frames[name].focus();
+  };
+
+  // 页面告知当前显示的物品，写进主页网址但不新增历史记录。
+  window.addEventListener('message', (event) => {
+    const { shown, detail } = event.data || {};
+    if (!pages[shown] || typeof detail !== 'string') {
+      return;
+    }
+    details[shown] = detail;
+    if (location.hash.slice(1).split('/')[0] === shown) {
+      history.replaceState(null, '', `#${shown}/${encodeURIComponent(detail)}`);
+    }
+  });
+  window.addEventListener('hashchange', route);
+  route();
 </script>
 </body>
 </html>
