@@ -107,6 +107,20 @@ NODISCARD constexpr std::pair<int, int> direction_delta(
     return {0, 0};
 }
 
+// 人物已会该武功时返回所在槽位。
+NODISCARD std::optional<std::size_t> learned_magic_slot(
+    const model::RoleState& role, const std::int16_t magic_id) noexcept {
+    if (magic_id <= 0) {
+        return std::nullopt;
+    }
+    for (std::size_t slot = 0U; slot < role.magic_ids.size(); ++slot) {
+        if (role.magic_ids[slot].value == magic_id) {
+            return slot;
+        }
+    }
+    return std::nullopt;
+}
+
 NODISCARD bool blocked_earth(const std::int16_t value) noexcept {
     for (std::size_t index = 0U; index < kBlockedEarthLow.size(); ++index) {
         if (value >= kBlockedEarthLow[index] && value <= kBlockedEarthHigh[index]) {
@@ -1456,11 +1470,8 @@ SceneStepResult SceneSession::run_event() {
                 role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size();
             if (role_is_valid) {
                 auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
-                // NG+继承的武功可能已在槽中（如侠客岛石破天的太玄神功），已会时保留原槽位与等级。
-                const bool already_learned = snapshot_.configuration.enabled &&
-                    std::ranges::any_of(role.magic_ids, [magic_id](const model::MagicId id) {
-                        return id.value == magic_id;
-                    });
+                // 已会的武功不再占新槽，保留原槽位与等级（原版不查重复）。
+                const bool already_learned = learned_magic_slot(role, magic_id).has_value();
                 std::size_t destination = 0U;
                 for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
                     const auto existing_magic_id = role.magic_ids[slot].value;
@@ -1599,7 +1610,10 @@ SceneStepResult SceneSession::run_event() {
             if (role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size()) {
                 auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
                 auto destination = argument(2);
-                if (destination == -1) {
+                // 已会的武功只更新原槽位的等级，不再写到别的槽（原版不查重复）。
+                if (const auto learned = learned_magic_slot(role, argument(3)); learned.has_value()) {
+                    destination = static_cast<std::int16_t>(*learned);
+                } else if (destination == -1) {
                     destination = 0;
                     for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
                         const auto existing_magic_id = role.magic_ids[slot].value;
