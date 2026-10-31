@@ -1456,6 +1456,11 @@ SceneStepResult SceneSession::run_event() {
                 role_id >= 0 && static_cast<std::size_t>(role_id) < snapshot_.ranger.roles.size();
             if (role_is_valid) {
                 auto& role = snapshot_.ranger.roles[static_cast<std::size_t>(role_id)];
+                // NG+继承的武功可能已在槽中（如侠客岛石破天的太玄神功），已会时保留原槽位与等级。
+                const bool already_learned = snapshot_.configuration.enabled &&
+                    std::ranges::any_of(role.magic_ids, [magic_id](const model::MagicId id) {
+                        return id.value == magic_id;
+                    });
                 std::size_t destination = 0U;
                 for (std::size_t slot = 0U; slot < model::role_word::magic_count; ++slot) {
                     const auto existing_magic_id = role.magic_ids[slot].value;
@@ -1465,8 +1470,10 @@ SceneStepResult SceneSession::run_event() {
                         break;
                     }
                 }
-                role.set_word(model::role_word::magic_id_begin + destination, magic_id);
-                role.set_word(model::role_word::magic_level_begin + destination, 0);
+                if (!already_learned) {
+                    role.set_word(model::role_word::magic_id_begin + destination, magic_id);
+                    role.set_word(model::role_word::magic_level_begin + destination, 0);
+                }
             }
             program_counter_ += 4;
             if (argument(3) == 0) {

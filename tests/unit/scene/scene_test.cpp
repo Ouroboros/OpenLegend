@@ -4261,6 +4261,25 @@ void check_event_learn_magic(const std::filesystem::path& root) {
             OL_CHECK(snapshot.valid_for_persistence());
         }
     }
+
+    auto learned_snapshot = load_baseline(root);
+    learned_snapshot.configuration.enabled = true;
+    learned_snapshot.origin = openlegend::model::SnapshotOrigin::new_game_plus;
+    learned_snapshot.playthrough = 2;
+    auto& learned_role = learned_snapshot.ranger.roles[49U];
+    fill_magic_slots(learned_role);
+    learned_role.ever_joined = true;
+    learned_role.magic_ids[3U] = openlegend::model::MagicId{15};
+    learned_role.magic_levels[3U] = 700;
+    learned_role.magic_ids[5U] = openlegend::model::MagicId{-1};
+    learned_role.magic_levels[5U] = 0;
+    const auto learned_before = learned_role;
+    openlegend::random::LegacyRandom learned_random{1U};
+    openlegend::scene::SceneSession learned_session{
+        data_root, learned_snapshot, learned_random, 70};
+    OL_CHECK(finish_scene_title(learned_session).kind == SceneStepKind::stay);
+    OL_CHECK(learned_session.begin_event(36, 0, 0, 0).kind == SceneStepKind::notice);
+    OL_CHECK(learned_role == learned_before);
 }
 
 void check_event_all_book_pictures_condition(const std::filesystem::path& root) {
