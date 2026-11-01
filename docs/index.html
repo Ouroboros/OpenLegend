@@ -210,6 +210,7 @@
   <a href="#install">安装</a>
   <a href="#data">游戏数据</a>
   <a href="#items">物品大全</a>
+  <a href="#magics">武功大全</a>
   <p class="links">
     <a href="https://github.com/Ouroboros/OpenLegend">GitHub</a> ·
     <a href="https://github.com/Ouroboros/OpenLegend/releases">下载</a>
@@ -635,8 +636,8 @@ fight_group = ['fmp000', 'fmp001']         <span class="comment"># 战斗动画�
     }
   });
 
-  // 独立页面（物品大全）在内容区打开，首次显示时载入；网址 #items/名称@编号 指定打开的物品。
-  const pages = { items: 'items.html' };
+  // 独立页面（物品大全、武功大全）在内容区打开，首次显示时载入；网址 #items/名称@编号 指定打开的物品。
+  const pages = { items: 'items.html', magics: 'magics.html' };
   const frames = {};
   const details = {};
   const decoded = (text) => {
