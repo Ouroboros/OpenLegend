@@ -164,14 +164,17 @@
   .row .mark { width: 1.2em; text-align: center; }
   .row.picked { color: var(--selected); text-shadow: var(--shadow) var(--selected-shadow); }
   .row .swatch { display: inline-block; width: 12px; height: 12px; margin-right: 8px; border: 1px solid #fff; }
-  .metrics { display: flex; gap: 0; margin: 2px 0 6px; }
+  .metrics { display: flex; gap: 0; margin: 0 0 2px; }
   .metrics .tab { flex: none; padding: 0 10px; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 17px; min-height: 26px; }
   .legend span { cursor: pointer; white-space: nowrap; }
   .legend i { display: inline-block; width: 14px; height: 4px; margin-right: 6px; vertical-align: middle; }
-  .chart { width: 100%; height: 250px; margin-top: 4px; }
+  /* 右面板不滚动：标签、图例、图表高度固定，表格占满剩余高度并自带滚动条。 */
+  #detail { display: flex; flex-direction: column; overflow: hidden; }
+  #detail > * { flex: none; }
+  .chart { width: 100%; height: 230px; margin-top: 2px; }
   .chart text { font-size: 12px; fill: #bebebe; }
-  .table-wrap { overflow: auto; max-height: 300px; margin-top: 6px; scrollbar-color: var(--label) transparent; }
+  #detail > .table-wrap { flex: 1; min-height: 0; overflow: auto; margin-top: 4px; scrollbar-color: var(--label) transparent; }
   .levels { border-collapse: collapse; font-size: 16px; min-width: 100%; }
   .levels th {
     position: sticky;
