@@ -431,21 +431,34 @@ std::optional<RuntimeGameSnapshot> decode_legacy_snapshot(
     return result;
 }
 
-std::optional<GameSnapshot> encode_legacy_snapshot(const RuntimeGameSnapshot& snapshot) {
-    if (!snapshot.valid_for_persistence() || snapshot.origin != SnapshotOrigin::legacy ||
-        snapshot.configuration.enabled || snapshot.playthrough != 1) {
+std::optional<GameSnapshot> encode_legacy_snapshot(
+    const RuntimeGameSnapshot& snapshot, std::string* const problem) {
+    const auto fail = [problem](std::string reason) -> std::optional<GameSnapshot> {
+        if (problem != nullptr) {
+            *problem = std::move(reason);
+        }
         return std::nullopt;
+    };
+    if (snapshot.origin != SnapshotOrigin::legacy || snapshot.configuration.enabled ||
+        snapshot.playthrough != 1) {
+        return fail("NG+ game state cannot use the original save format");
+    }
+    if (!snapshot.valid_for_persistence()) {
+        return fail("game state violates the persistence rules");
     }
     const auto header = encode_legacy_header(snapshot.ranger.header);
     if (!header.has_value()) {
-        return std::nullopt;
+        return fail("an inventory item count is outside the -32768..32767 range");
     }
     GameSnapshot result;
     result.ranger.roles.resize(snapshot.ranger.roles.size());
     for (std::size_t index = 0U; index < snapshot.ranger.roles.size(); ++index) {
-        auto record = encode_legacy_role(snapshot.ranger.roles[index]);
+        std::string role_problem;
+        auto record = encode_legacy_role(snapshot.ranger.roles[index], &role_problem);
         if (!record.has_value()) {
-            return std::nullopt;
+            return fail("role " + std::to_string(index) + " " +
+                std::string{reinterpret_cast<const char*>(snapshot.ranger.roles[index].name.data()),
+                    snapshot.ranger.roles[index].name.size()} + ": " + role_problem);
         }
         result.ranger.roles[index] = std::move(*record);
     }

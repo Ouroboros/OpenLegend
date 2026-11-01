@@ -75,6 +75,8 @@ struct RoleState {
 
 NODISCARD std::optional<RoleState> decode_legacy_role(const RoleRecord& record);
 
-NODISCARD std::optional<RoleRecord> encode_legacy_role(const RoleState& state);
+// 无法写成原版记录时返回空；problem非空时写入原因。
+NODISCARD std::optional<RoleRecord> encode_legacy_role(
+    const RoleState& state, std::string* problem = nullptr);
 
 }

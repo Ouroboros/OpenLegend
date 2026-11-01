@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "openlegend/attributes.hpp"
@@ -92,8 +93,9 @@ NODISCARD std::optional<RuntimeGameSnapshot> decode_legacy_snapshot(
     GameSnapshot snapshot, const NewGamePlusConfiguration& configuration = {},
     const RangerState* baseline = nullptr);
 
+// 无法写成原版存档时返回空；problem非空时写入原因（哪个人物的哪个数值）。
 NODISCARD std::optional<GameSnapshot> encode_legacy_snapshot(
-    const RuntimeGameSnapshot& snapshot);
+    const RuntimeGameSnapshot& snapshot, std::string* problem = nullptr);
 
 class RuntimeGameState {
 public:

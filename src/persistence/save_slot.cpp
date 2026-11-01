@@ -764,7 +764,7 @@ std::string_view persistence_status_message(const PersistenceStatus status) noex
     case PersistenceStatus::invalid_scene_group_size:
         return "scene group size does not match its index";
     case PersistenceStatus::invalid_snapshot:
-        return "game snapshot has invalid scene storage";
+        return "game data does not fit the original save format";
     case PersistenceStatus::invalid_toml:
         return "NG+ save is damaged or incompatible; Legacy fallback was not used";
     case PersistenceStatus::incompatible_assets:
@@ -785,10 +785,11 @@ SnapshotWriteResult write_numbered_slot_scene_archives(
     const std::filesystem::path& root,
     const SaveSlot slot,
     const model::RuntimeGameSnapshot& snapshot) {
-    const auto encoded = model::encode_legacy_snapshot(snapshot);
+    std::string problem;
+    const auto encoded = model::encode_legacy_snapshot(snapshot, &problem);
     if (!encoded.has_value()) {
         return write_error(PersistenceStatus::invalid_snapshot, root,
-            "logical snapshot cannot be represented as Legacy");
+            "game state cannot be written in the original save format: " + problem);
     }
     return write_numbered_slot_scene_archives(root, slot, *encoded);
 }
@@ -797,10 +798,11 @@ SnapshotWriteResult write_numbered_slot_ranger(
     const std::filesystem::path& root,
     const SaveSlot slot,
     const model::RuntimeGameSnapshot& snapshot) {
-    const auto encoded = model::encode_legacy_snapshot(snapshot);
+    std::string problem;
+    const auto encoded = model::encode_legacy_snapshot(snapshot, &problem);
     if (!encoded.has_value()) {
         return write_error(PersistenceStatus::invalid_snapshot, root,
-            "logical snapshot cannot be represented as Legacy");
+            "game state cannot be written in the original save format: " + problem);
     }
     return write_numbered_slot_ranger(root, slot, *encoded);
 }
@@ -809,10 +811,11 @@ SnapshotWriteResult write_numbered_slot(
     const std::filesystem::path& root,
     const SaveSlot slot,
     const model::RuntimeGameSnapshot& snapshot) {
-    const auto encoded = model::encode_legacy_snapshot(snapshot);
+    std::string problem;
+    const auto encoded = model::encode_legacy_snapshot(snapshot, &problem);
     if (!encoded.has_value()) {
         return write_error(PersistenceStatus::invalid_snapshot, root,
-            "logical snapshot cannot be represented as Legacy");
+            "game state cannot be written in the original save format: " + problem);
     }
     return write_numbered_slot(root, slot, *encoded);
 }

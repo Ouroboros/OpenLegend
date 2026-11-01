@@ -1629,9 +1629,14 @@ std::optional<BattlePostBattleRoleResult> BattleSetup::apply_post_battle_experie
         error_ = "battle accumulated experience overflow";
         return std::nullopt;
     }
-    role.experience = *experience;
-    role.item_experience = *item_experience;
-    role.make_item_experience = *make_item_experience;
+    // 未开启NG+时存档为原版格式，三项经验均为无符号16位字段，超过上限时截断。
+    const auto stored = [this](const std::int64_t value) {
+        return new_game_plus_enabled_ ? value : std::min<std::int64_t>(
+            value, std::numeric_limits<std::uint16_t>::max());
+    };
+    role.experience = stored(*experience);
+    role.item_experience = stored(*item_experience);
+    role.make_item_experience = stored(*make_item_experience);
     return BattlePostBattleRoleResult{
         .combatant_slot = combatant_slot,
         .role_id = role_id,

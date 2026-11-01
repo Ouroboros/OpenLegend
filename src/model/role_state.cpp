@@ -4,6 +4,7 @@
 #include <limits>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -224,22 +225,30 @@ std::optional<RoleState> decode_legacy_role(const RoleRecord& record) {
     return state;
 }
 
-std::optional<RoleRecord> encode_legacy_role(const RoleState& state) {
+std::optional<RoleRecord> encode_legacy_role(const RoleState& state, std::string* const problem) {
+    const auto fail = [problem](std::string reason) -> std::optional<RoleRecord> {
+        if (problem != nullptr) {
+            *problem = std::move(reason);
+        }
+        return std::nullopt;
+    };
     if (state.ever_joined || std::any_of(
             state.no_magic_count.begin(), state.no_magic_count.end(),
             [](const auto& entry) { return entry.second != 0; })) {
-        return std::nullopt;
+        return fail("has NG+ join or practice history");
     }
     RoleRecord record;
     record.set_word(role_word::id, state.id.value);
     record.set_word(role_word::head_id, state.head_id);
     if (!encode_name(record, role_word::name_byte, state.name) ||
         !encode_name(record, role_word::nickname_byte, state.nickname)) {
-        return std::nullopt;
+        return fail("name or nickname does not fit Big5 10 bytes");
     }
     for (const auto& field : scalar_fields) {
         if (!encode_value(record, field.legacy_index, state.*field.value, field.unsigned_legacy)) {
-            return std::nullopt;
+            return fail("word " + std::to_string(field.legacy_index) + " = " +
+                std::to_string(state.*field.value) + " is outside the " +
+                (field.unsigned_legacy ? "0..65535" : "-32768..32767") + " range");
         }
     }
     for (std::size_t index = 0U; index < state.equipment.size(); ++index) {
@@ -252,13 +261,15 @@ std::optional<RoleRecord> encode_legacy_role(const RoleState& state) {
     for (std::size_t index = 0U; index < state.magic_ids.size(); ++index) {
         record.set_word(role_word::magic_id_begin + index, state.magic_ids[index].value);
         if (!encode_value(record, role_word::magic_level_begin + index, state.magic_levels[index], true)) {
-            return std::nullopt;
+            return fail("magic slot " + std::to_string(index) + " proficiency " +
+                std::to_string(state.magic_levels[index]) + " is outside the 0..65535 range");
         }
     }
     for (std::size_t index = 0U; index < state.taking_items.size(); ++index) {
         record.set_word(role_word::taking_item_begin + index, state.taking_items[index].value);
         if (!encode_value(record, role_word::taking_item_count_begin + index, state.taking_counts[index])) {
-            return std::nullopt;
+            return fail("carried item count " + std::to_string(state.taking_counts[index]) +
+                " is outside the -32768..32767 range");
         }
     }
     return record;
