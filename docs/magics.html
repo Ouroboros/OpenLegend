@@ -165,7 +165,8 @@
   .facts { display: flex; flex-wrap: wrap; gap: 4px 28px; margin-top: 6px; font-size: 18px; }
   .facts .key { color: var(--value); text-shadow: var(--shadow) var(--value-shadow); margin-right: 10px; }
   .facts .data { color: var(--selected); text-shadow: var(--shadow) var(--selected-shadow); }
-  .levels { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 17px; }
+  .levels { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 17px; table-layout: fixed; }
+  .levels col.level { width: 9%; }
   .levels th {
     position: sticky;
     top: 0;
@@ -254,13 +255,8 @@ function show() {
   }
 
   keepPlace(`${magic.name}@${magic.id}`);
-  // 吸內力類武功顯示殺內力與吸內力，其餘顯示威力；帶毒為 0 時不列。
-  const columns = magic.drain ? [['殺內力', 1], ['吸內力', 2]] : [['威力', 0]];
-  columns.push(['移動', 3], ['範圍', 4], ['耗內力', 5]);
-
-  if (magic.poison > 0) {
-    columns.push(['帶毒', 6]);
-  }
+  // 所有武功列出同樣的欄，位置固定，便於切換武功時對照。
+  const columns = [['威力', 0], ['殺內力', 1], ['吸內力', 2], ['移動', 3], ['範圍', 4], ['耗內力', 5], ['帶毒', 6]];
 
   const facts = [['類型', magic.type], ['範圍', magic.shape], ['每兩級耗內力', magic.needMp],
     ['帶毒', magic.poison ? `${magic.poison} × 等級` : '無'], ['編號', magic.id]];
@@ -274,7 +270,7 @@ function show() {
   $('detail').innerHTML = `<div class="head"><div class="name">${escape(magic.name)}</div>` +
     `<div class="facts">${facts.map(([key, value]) =>
       `<span><span class="key">${key}</span><span class="data">${escape(value)}</span></span>`).join('')}</div></div>` +
-    `<table class="levels"><thead><tr><th>等級</th>${columns.map(([label]) => `<th>${label}</th>`).join('')}</tr></thead>` +
+    `<table class="levels"><colgroup><col class="level">${columns.map(() => '<col>').join('')}</colgroup><thead><tr><th>等級</th>${columns.map(([label]) => `<th>${label}</th>`).join('')}</tr></thead>` +
     `<tbody>${rows}</tbody></table>`;
   $('detail').scrollTop = 0;
 }
